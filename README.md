@@ -25,6 +25,16 @@ agentrun --version
 
 L'installateur ne modifie pas les fichiers de shell ; ajouter cette ligne `export` à la configuration de son shell pour la conserver dans les futurs terminaux si le répertoire n'y figure pas déjà. Voir le [guide d'installation Linux](docs/install.md#téléchargement-et-installation-automatiques) pour choisir une version, un autre emplacement ou installer hors ligne.
 
+**Configurer Codex en une commande :**
+
+```bash
+agentrun-setup codex
+```
+
+Cet utilitaire, inclus à partir de **0.3.3**, installe la configuration initiale avec les 36 profils si elle est absente, enregistre le serveur MCP local dans Codex et ajoute les consignes permanentes AgentRun. Il nécessite **Python 3.8+ et le CLI Codex**. Il conserve les configurations existantes et peut être relancé sans dupliquer les consignes. Les racines initiales autorisent `~/.codex/worktrees` ; ajouter explicitement les autres répertoires souhaités à `allowedRoots`.
+
+Ouvrir ensuite une nouvelle session Codex et demander : « Utilise l'outil MCP AgentRun `list_processes` pour vérifier la connexion. » Pour les autres agents, `agentrun-setup config` prépare seulement la politique ; voir le [guide de configuration](docs/agents.md#configuration-automatique-recommandée).
+
 Les archives Linux statiques musl pour x86_64 et ARM64 sont aussi disponibles dans les [releases publiques](https://github.com/Lucashw68/AgentRun/releases/latest), pour Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Aucun compilateur n'est requis ; chaque archive contient aussi `install.sh` pour une installation hors ligne.
 
 Pour compiler depuis les sources avec une toolchain Rust compatible avec `Cargo.toml` :
@@ -44,6 +54,8 @@ agentrun --version
 cargo install --path . --locked --root "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+Cargo n'installe pas l'utilitaire Python. Depuis le dépôt, son équivalent est `python3 scripts/setup.py codex --bin-dir "$HOME/.local/bin"` (ou `~/.cargo/bin` selon le préfixe choisi).
 
 Conserver les trois binaires dans le même répertoire : le Core résout le collecteur à côté du binaire, jamais dans le PATH du projet.
 
@@ -161,7 +173,7 @@ $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
 $XDG_CONFIG_HOME/agentrun/config.json  défaut : ~/.config/agentrun/config.json
 ```
 
-Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.2`.
+Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.3`.
 
 Chaque entrée conserve :
 

@@ -112,7 +112,7 @@ else: assert name==source.name
     assert run('--version', 'v'+version).returncode == 0
     assert '/latest' not in requests.read_text()
     snapshots = {name: (prefix / 'bin' / name).read_bytes()
-                 for name in ['agentrun', 'agentrun-mcp', 'agentrun-log']}
+                 for name in ['agentrun', 'agentrun-mcp', 'agentrun-log', 'agentrun-setup']}
     requests.write_text('')
     assert run('--github-cli').returncode == 0
     assert requests.read_text().splitlines() == ['"gh:view"', '"gh:download"', '"gh:download"']
@@ -134,10 +134,10 @@ else: assert name==source.name
     refused(overrides={'TEST_ARCH': 'riscv64'})
     refused(overrides={'RELEASE_VERSION': '../../malicious'})
 
-    def rewritten(mode):
+    def rewritten(mode, altered='agentrun-log'):
         with tarfile.open(fileobj=io.BytesIO(original)) as package, tarfile.open(payload, 'w:gz') as out:
             for member in package:
-                if member.name == archive_root + '/agentrun-log':
+                if member.name == archive_root + '/' + altered:
                     if mode == 'missing':
                         continue
                     if mode == 'symlink':
@@ -154,9 +154,10 @@ else: assert name==source.name
                 member.size = 3
                 out.addfile(member, io.BytesIO(b'bad'))
 
-    for mode in ['missing', 'symlink', 'duplicate']:
-        rewritten(mode)
-        refused('--version', version)
+    for altered in ['agentrun-log', 'agentrun-setup']:
+        for mode in ['missing', 'symlink', 'duplicate']:
+            rewritten(mode, altered)
+            refused('--version', version)
     rewritten('traversal')
     assert run('--version', version).returncode == 0
     assert not (root / 'escaped').exists()

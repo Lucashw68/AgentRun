@@ -10,7 +10,7 @@ Les releases à partir de **0.3.1** fournissent des binaires statiques musl pour
 curl -qfsSL --proto '=https' --proto-redir '=https' https://github.com/Lucashw68/AgentRun/releases/latest/download/install-agentrun.sh -o install-agentrun.sh && sh install-agentrun.sh --repo Lucashw68/AgentRun
 ```
 
-Le script détecte l'architecture, choisit la dernière release stable, télécharge l'archive et son checksum, vérifie SHA-256 puis installe les trois exécutables dans `~/.local/bin`. Le `&&` empêche l'exécution du script si le téléchargement échoue. Pour le lire avant exécution, lancer séparément les deux commandes situées de part et d'autre du `&&`.
+Le script détecte l'architecture, choisit la dernière release stable, télécharge l'archive et son checksum, vérifie SHA-256 puis installe les trois binaires et l'utilitaire `agentrun-setup` dans `~/.local/bin`. Le `&&` empêche l'exécution du script si le téléchargement échoue. Pour le lire avant exécution, lancer séparément les deux commandes situées de part et d'autre du `&&`.
 
 Ajouter le répertoire au PATH si nécessaire et vérifier l'installation :
 
@@ -24,17 +24,25 @@ Cette ligne `export` s'applique au terminal actuel. Si `~/.local/bin` ne figure 
 
 Le script exige Linux 6.9+, `curl`, `tar`, `sha256sum` et les outils POSIX usuels. Il ne télécharge aucun de ces prérequis. Les architectures prises en charge sont x86_64 et ARM64.
 
+Pour terminer la configuration Codex :
+
+```bash
+agentrun-setup codex
+```
+
+Cet utilitaire est inclus à partir de 0.3.3 et nécessite Python 3.8+ ainsi que le CLI Codex. Il crée la politique initiale si elle manque, enregistre le MCP et ajoute les consignes permanentes, en conservant les réglages existants. Pour un autre client, utiliser `agentrun-setup config` puis les [instructions du client](agents.md). Python n'est nécessaire qu'à cet utilitaire ; le CLI et le MCP restent des binaires autonomes. La configuration automatique est une étape explicite après l'installation.
+
 Pour choisir une version et un emplacement, réutiliser le script téléchargé :
 
 ```bash
 sh install-agentrun.sh --repo Lucashw68/AgentRun \
-  --version 0.3.2 --prefix "$HOME/Applications/agentrun"
+  --version 0.3.3 --prefix "$HOME/Applications/agentrun"
 export PATH="$HOME/Applications/agentrun/bin:$PATH"
 ```
 
-`--version` accepte `0.3.2` ou `v0.3.2`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Pour mettre à jour, relancer la commande d'installation avec le même préfixe ; aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Reconnecter les clients MCP pour charger les nouveaux binaires. La configuration et le registre existants sont conservés.
+`--version` accepte `0.3.3` ou `v0.3.3`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Pour mettre à jour, relancer la commande d'installation avec le même préfixe ; aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Reconnecter les clients MCP pour charger les nouveaux binaires. La configuration et le registre existants sont conservés.
 
-Les téléchargements publics et leurs redirections sont limités à HTTPS avec validation TLS ; le script ignore `.curlrc`. Les fichiers sont placés dans un répertoire temporaire privé et supprimés à la sortie. Le checksum est contrôlé avant toute extraction ou exécution ; seuls les trois binaires et l'installateur régulier de l'archive sont extraits vers des destinations fixes. Un échec de téléchargement, un checksum incorrect ou une archive incomplète ne remplace pas l'installation existante. SHA-256 protège l'intégrité du transfert, sans remplacer la confiance dans le dépôt choisi et dans le script initial.
+Les téléchargements publics et leurs redirections sont limités à HTTPS avec validation TLS ; le script ignore `.curlrc`. Les fichiers sont placés dans un répertoire temporaire privé et supprimés à la sortie. Le checksum est contrôlé avant toute extraction ou exécution ; seuls les trois binaires, l'installateur et l'utilitaire de configuration sont extraits comme fichiers réguliers vers des destinations fixes. Un échec de téléchargement, un checksum incorrect ou une archive incomplète ne remplace pas l'installation existante. Les anciennes releases sans utilitaire restent installables. SHA-256 protège l'intégrité du transfert, sans remplacer la confiance dans le dépôt choisi et dans le script initial.
 
 ### Variante pour un fork privé
 
@@ -54,8 +62,8 @@ Ouvrir les [releases publiques AgentRun](https://github.com/Lucashw68/AgentRun/r
 
 | Résultat de `uname -m` | Archive |
 | --- | --- |
-| `x86_64` | `agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz` |
-| `aarch64` ou `arm64` | `agentrun-0.3.2-aarch64-unknown-linux-musl.tar.gz` |
+| `x86_64` | `agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz` |
+| `aarch64` ou `arm64` | `agentrun-0.3.3-aarch64-unknown-linux-musl.tar.gz` |
 
 Les fichiers `Source code` générés par GitHub ne contiennent pas les exécutables. Choisir les assets nommés ci-dessus. Les architectures 32 bits ne sont pas distribuées.
 
@@ -79,9 +87,9 @@ Le [cycle des noyaux Ubuntu](https://ubuntu.com/kernel/docs/reference/hwe-kernel
 Depuis le dossier de téléchargement, exemple x86_64 :
 
 ```bash
-sha256sum -c agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz.sha256
-tar -xzf agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz
-cd agentrun-0.3.2-x86_64-unknown-linux-musl
+sha256sum -c agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz.sha256
+tar -xzf agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz
+cd agentrun-0.3.3-x86_64-unknown-linux-musl
 sh ./install.sh
 export PATH="$HOME/.local/bin:$PATH"
 agentrun --version
@@ -90,7 +98,7 @@ agentrun list --json
 
 Pour ARM64, remplacer `x86_64` par `aarch64` dans les noms de fichiers. Le checksum vérifie l'intégrité de l'archive ; il ne remplace pas une signature de provenance.
 
-`install.sh` copie les trois exécutables dans `~/.local/bin`. Il vérifie le noyau et l'exécution du binaire avant de copier, refuse les destinations exécutables qui sont des symlinks, et ne télécharge rien. Il ne modifie ni le PATH permanent, ni les fichiers de shell, ni la politique MCP, ni le registre ou les processus en cours. Ajouter `~/.local/bin` au PATH de son shell si nécessaire. Aucune installation globale par apt, dnf ou pacman n'est nécessaire.
+`install.sh` copie les trois binaires et `agentrun-setup` dans `~/.local/bin`. Il vérifie le noyau et l'exécution du binaire avant de copier, refuse les destinations exécutables qui sont des symlinks, et ne télécharge rien. Il ne modifie ni le PATH permanent, ni les fichiers de shell, ni la politique MCP, ni le registre ou les processus en cours. Ajouter `~/.local/bin` au PATH de son shell si nécessaire. Aucune installation globale par apt, dnf ou pacman n'est nécessaire.
 
 Un autre préfixe absolu est possible :
 
@@ -105,7 +113,7 @@ Les archives restent utilisables sans installation : `./agentrun list --json`, p
 
 ## Configuration et agents
 
-Suivre le [guide des agents](agents.md#2-configurer-les-racines-et-profils-agentrun) pour copier `examples/config.json` dans le répertoire XDG utilisateur et enregistrer le serveur dans Codex, Claude Code, Cursor ou VS Code. Le [catalogue](profiles.md) décrit les 36 profils disponibles. L'installation des binaires n'autorise pas automatiquement le lancement de projets via MCP.
+Utiliser `agentrun-setup codex` ou `agentrun-setup config`, puis suivre le [guide des agents](agents.md#configuration-automatique-recommandée) pour les détails et les autres clients. Le [catalogue](profiles.md) décrit les 36 profils disponibles. L'installation des binaires n'autorise pas automatiquement le lancement de projets via MCP.
 
 ## Compilation depuis les sources
 

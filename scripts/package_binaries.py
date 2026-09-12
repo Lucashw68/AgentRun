@@ -2,6 +2,8 @@
 """Package the three sibling Linux binaries, documentation and example policy."""
 import argparse
 import hashlib
+import io
+import json
 from pathlib import Path
 import tarfile
 import tomllib
@@ -31,6 +33,11 @@ for path, _, _ in files:
         raise SystemExit(f'Missing or non-regular input: {path}')
 args.out_dir.mkdir(parents=True, exist_ok=True)
 archive = args.out_dir / f'{name}.tar.gz'
+setup = (root / 'scripts/setup.py').read_text()
+marker = 'DEFAULT_POLICY = None  # bundled by package_binaries.py'
+assert setup.count(marker) == 1
+setup = setup.replace(marker, 'DEFAULT_POLICY = ' + repr(json.loads((root / 'examples/config.json').read_text())))
+setup_bytes = setup.encode()
 with tarfile.open(archive, 'w:gz', format=tarfile.USTAR_FORMAT) as package:
     for path, relative, mode in files:
         info = tarfile.TarInfo(f'{name}/{relative}')
@@ -39,6 +46,10 @@ with tarfile.open(archive, 'w:gz', format=tarfile.USTAR_FORMAT) as package:
         # Neutral metadata: no builder username, home path or timestamps.
         with path.open('rb') as source:
             package.addfile(info, source)
+    info = tarfile.TarInfo(f'{name}/agentrun-setup')
+    info.size = len(setup_bytes)
+    info.mode = 0o755
+    package.addfile(info, io.BytesIO(setup_bytes))
 checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
 archive.with_suffix(archive.suffix + '.sha256').write_text(f'{checksum}  {archive.name}\n')
 print(archive)

@@ -4,6 +4,44 @@ Ce guide configure un serveur **MCP local en stdio**, nommé `agentrun`. Le clie
 
 Deux configurations sont nécessaires : la **politique AgentRun**, qui autorise des répertoires et profils, puis la **configuration du client**, qui lui indique comment démarrer le serveur. Enregistrer le serveur ne lui donne pas automatiquement des profils autorisés.
 
+## Configuration automatique recommandée
+
+Après l'[installation des binaires](install.md#téléchargement-et-installation-automatiques), avec AgentRun **0.3.3+**, Python **3.8+** et le CLI Codex dans le PATH :
+
+```bash
+agentrun-setup codex
+```
+
+Cette commande réalise les trois étapes de configuration :
+
+1. Crée la politique XDG AgentRun avec les **36 profils** du fichier initial, uniquement si aucune configuration n'existe. La racine initiale est `~/.codex/worktrees`.
+2. Enregistre `agentrun` avec le chemin absolu du binaire `agentrun-mcp` installé à côté de l'utilitaire, via `codex mcp add`. Une inscription identique est conservée ; une inscription différente provoque un refus sans remplacement.
+3. Ajoute les consignes permanentes au fichier global `AGENTS.md` dans `CODEX_HOME` (défaut `~/.codex`). Un `AGENTS.override.md` non vide est utilisé en priorité. Le bloc délimité par `<!-- agentrun:instructions:start -->` et `<!-- agentrun:instructions:end -->` est géré par l'utilitaire ; le reste du fichier est conservé.
+
+La commande peut être relancée : elle ne duplique pas les consignes et ne remplace pas la politique existante. Elle respecte `XDG_CONFIG_HOME` absolu, avec fallback vers `~/.config`, et exige un `CODEX_HOME` absolu s'il est personnalisé. Les nouveaux fichiers de politique et de consignes sont privés (`0600`). Les liens symboliques, fichiers spéciaux et hardlinks sur les fichiers modifiés sont refusés. Des verrous empêchent deux exécutions concurrentes de l'utilitaire ; éviter de modifier les mêmes fichiers dans un éditeur pendant son exécution.
+
+Aucun téléchargement, sudo, modification du PATH ou démarrage de processus de développement. Les projets et profils autorisés conservent les droits de l'utilisateur : cet utilitaire n'ajoute pas de sandbox. Une erreur est signalée avec un code de sortie non nul ; si une étape a déjà réussi, elle reste en place et une nouvelle exécution peut terminer la configuration après correction. Le CLI Codex effectue lui-même les modifications de `config.toml`, en préservant ses autres réglages.
+
+Ouvrir une nouvelle session Codex, puis effectuer directement la [vérification de connexion](#5-vérifier-la-connexion). Les étapes manuelles ci-dessous servent de référence ; il n'est pas nécessaire de recopier leurs consignes après la configuration automatique. Des instructions propres au projet peuvent toujours prendre le pas sur les consignes globales.
+
+Pour **un autre agent**, ou pour préparer uniquement la politique :
+
+```bash
+agentrun-setup config
+```
+
+Cette variante nécessite seulement Python 3.8+, ne touche pas à Codex et n'enregistre aucun client. Suivre ensuite la section correspondant au client souhaité. Pour ajouter des projets hors des worktrees, modifier `allowedRoots` dans le fichier indiqué par l'utilitaire ; les profils et racines existants ne sont jamais élargis automatiquement.
+
+Avec une installation Cargo, exécuter depuis le dépôt :
+
+```bash
+python3 scripts/setup.py codex --bin-dir "$HOME/.cargo/bin"
+# Ou seulement la politique :
+python3 scripts/setup.py config
+```
+
+`--bin-dir` permet de sélectionner un autre répertoire contenant les trois binaires. Pour une installation par archive ou script de téléchargement, il est normalement inutile. `agentrun-setup --help` décrit les options.
+
 ## 1. Installer les trois binaires
 
 Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Installer la dernière release publique, sans compte GitHub ni sudo :
@@ -14,7 +52,7 @@ export PATH="$HOME/.local/bin:$PATH"
 agentrun --version
 ```
 
-Le script télécharge les trois binaires adaptés à l'architecture, vérifie leur SHA-256 et les installe dans `~/.local/bin`. Le [guide d'installation](install.md#téléchargement-et-installation-automatiques) détaille les prérequis, le PATH permanent et les autres méthodes. Les archives permettent aussi une installation hors ligne avec `sh ./install.sh`, sans Cargo. Après une installation automatique, télécharger ou copier le [fichier initial `examples/config.json`](../examples/config.json) depuis le dépôt pour l'étape 2 ; après extraction manuelle, ce fichier est déjà dans le dossier extrait.
+Le script télécharge les trois binaires adaptés à l'architecture et l'utilitaire `agentrun-setup`, vérifie le SHA-256 de l'archive et les installe dans `~/.local/bin`. Le [guide d'installation](install.md#téléchargement-et-installation-automatiques) détaille les prérequis, le PATH permanent et les autres méthodes. Les archives permettent aussi une installation hors ligne avec `sh ./install.sh`, sans Cargo. Pour une configuration entièrement manuelle, télécharger ou copier le [fichier initial `examples/config.json`](../examples/config.json) depuis le dépôt pour l'étape 2 ; après extraction manuelle, ce fichier est déjà dans le dossier extrait.
 
 Pour une installation depuis les sources, depuis le dépôt AgentRun avec Cargo :
 

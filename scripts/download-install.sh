@@ -104,11 +104,16 @@ main() {
     actual=$(sha256sum "$agentrun_tmp/$archive"); actual=${actual%% *}
     [ "$actual" = "$expected" ] || fail 'SHA-256 mismatch; installation was not changed.'
 
-    # Extract only these four regular files to fixed destinations through stdout.
+    # Extract only allowlisted regular files to fixed destinations through stdout.
     # Archive paths, links, devices and unrelated members are never materialized.
     tar -tzf "$agentrun_tmp/$archive" > "$agentrun_tmp/members"
     mkdir "$agentrun_tmp/bundle"
-    for member in agentrun agentrun-mcp agentrun-log install.sh; do
+    members='agentrun agentrun-mcp agentrun-log install.sh'
+    # Keep installation of releases preceding the setup utility supported.
+    if grep -Fq "$base/agentrun-setup" "$agentrun_tmp/members"; then
+        members="$members agentrun-setup"
+    fi
+    for member in $members; do
         entry="$base/$member"
         [ "$(grep -Fxc "$entry" "$agentrun_tmp/members")" -eq 1 ] || fail "Missing or duplicate archive member: $member"
         details=$(LC_ALL=C tar -tvzf "$agentrun_tmp/$archive" "$entry")

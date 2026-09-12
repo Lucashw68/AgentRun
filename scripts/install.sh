@@ -4,7 +4,7 @@ set -eu
 
 usage() {
     printf '%s\n' 'Usage: sh install.sh [--prefix /absolute/path]' \
-        'Default prefix: $HOME/.local. Installs the three binaries in PREFIX/bin.' \
+        'Default prefix: $HOME/.local. Installs the three binaries and agentrun-setup in PREFIX/bin.' \
         'No download, privilege escalation, shell configuration or policy changes.'
 }
 if [ "${1:-}" = '--help' ]; then usage; exit 0; fi
@@ -26,7 +26,7 @@ if [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 9 ]; }; then
     exit 1
 fi
 bundle=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
-for binary in agentrun agentrun-mcp agentrun-log; do
+for binary in agentrun agentrun-mcp agentrun-log agentrun-setup; do
     if [ ! -f "$bundle/$binary" ] || [ -L "$bundle/$binary" ] || [ ! -x "$bundle/$binary" ]; then
         printf '%s\n' "Missing executable in archive: $binary" >&2; exit 1
     fi
@@ -37,9 +37,11 @@ done
 # Detect an incompatible CPU or executable format before changing the prefix.
 "$bundle/agentrun" --version
 mkdir -p "$prefix/bin"
-for binary in agentrun agentrun-mcp agentrun-log; do
+for binary in agentrun agentrun-mcp agentrun-log agentrun-setup; do
     install -m 755 "$bundle/$binary" "$prefix/bin/$binary"
 done
 printf '%s\n' "Installed AgentRun in $prefix/bin." \
-    'Add that directory to PATH in your shell and configure your MCP client.' \
+    'Add that directory to PATH in your shell.' \
+    'Then run: agentrun-setup codex (requires Python 3 and the Codex CLI).' \
+    'For other agents: agentrun-setup config, then register the stdio MCP in your client.' \
     'See docs/install.md and docs/agents.md in the archive.'

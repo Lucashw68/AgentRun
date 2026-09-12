@@ -83,6 +83,9 @@ jobs:
       - name: Verify download installer and failure handling
         run: python3 scripts/test_download_install.py --archive dist/*.tar.gz
 
+      - name: Verify setup utilities and configuration preservation
+        run: python3 scripts/test_setup.py --archive dist/*.tar.gz
+
       - name: Test common Linux distributions
         run: python3 scripts/distribution_smoke.py --archive dist/*.tar.gz
 

@@ -11,7 +11,8 @@ Chaque architecture exécute les mêmes étapes :
 5. Dix cycles MCP start/logs/restart/stop/clean sur les binaires release, avec contrôle des ressources et de l'absence de sockets du MCP.
 6. Création des archives et sommes SHA-256, tests de l'installateur hors ligne, puis installation et essais CLI/MCP dans Ubuntu, Fedora, Debian et Alpine. Arch est testé sur x86_64. Les conteneurs tournent sans réseau, sans capacités Linux et avec un utilisateur non privilégié ; ils partagent le noyau du runner.
 7. Tests du téléchargement automatique avec un transport substitué et de vraies archives : modes public/privé, version choisie, échecs réseau, checksums incorrects, membres manquants, dupliqués ou symlinks, et conservation d'une installation existante. Les téléchargements GitHub réels sont vérifiés séparément avant publication.
-8. Dépôt des artifacts après succès de toutes les vérifications, dont `install-agentrun.sh` et son checksum.
+8. Tests de l'utilitaire de configuration empaqueté : profils embarqués, relances sans doublons, préservation des fichiers, XDG/CODEX_HOME, overrides, conflits MCP, échecs et concurrence. Le CLI Codex est substitué dans la CI ; un test facultatif utilise le vrai client installé localement.
+9. Dépôt des artifacts après succès de toutes les vérifications, dont `install-agentrun.sh` et son checksum.
 
 Les [images x86_64](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) et [ARM64](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Arm64-Readme.md) documentent leur noyau courant. La vérification du workflow protège contre un changement d'image incompatible. Le runner ARM64 doit être disponible pour le dépôt et son offre GitHub.
 
@@ -22,7 +23,7 @@ Dans `Actions`, ouvrir une exécution réussie, puis télécharger l'artifact co
 - `agentrun-x86_64-unknown-linux-musl`
 - `agentrun-aarch64-unknown-linux-musl`
 
-Après extraction de l'artifact GitHub, on obtient une archive `agentrun-<version>-<target>.tar.gz` et son fichier `.tar.gz.sha256`. Vérifier l'archive avec `sha256sum -c <archive>.sha256`, puis l'extraire. Elle contient `agentrun`, `agentrun-mcp`, `agentrun-log`, le README, la licence, la configuration initiale et les guides. Installer **les trois exécutables dans le même répertoire**. L'archive tar conserve leurs permissions exécutables.
+Après extraction de l'artifact GitHub, on obtient une archive `agentrun-<version>-<target>.tar.gz` et son fichier `.tar.gz.sha256`. Vérifier l'archive avec `sha256sum -c <archive>.sha256`, puis l'extraire. Elle contient `agentrun`, `agentrun-mcp`, `agentrun-log`, l'utilitaire Python `agentrun-setup`, le README, la licence, la configuration initiale et les guides. Le packager embarque `examples/config.json` dans l'utilitaire, sans deuxième catalogue à maintenir. Installer **les trois binaires et l'utilitaire dans le même répertoire**. L'archive tar conserve leurs permissions exécutables.
 
 Les artifacts de CI sont conservés 14 jours. Les binaires statiques sont indépendants de la glibc de la distribution ; Linux 6.9+ reste nécessaire à l'exécution. L'installateur `install.sh` est inclus. Voir le [guide d'installation](install.md) pour les limites de compatibilité et les commandes.
 
@@ -48,9 +49,12 @@ cargo build --locked --release --bins --target x86_64-unknown-linux-musl
 python3 scripts/verify_static.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
 python3 scripts/resource_soak.py --bin-dir target/x86_64-unknown-linux-musl/release --cycles 10
 python3 scripts/package_binaries.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
-python3 scripts/test_install.py --archive dist/agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz
-python3 scripts/test_download_install.py --archive dist/agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz
-python3 scripts/distribution_smoke.py --archive dist/agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_install.py --archive dist/agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_download_install.py --archive dist/agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_setup.py --archive dist/agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/distribution_smoke.py --archive dist/agentrun-0.3.3-x86_64-unknown-linux-musl.tar.gz
 ```
 
 Pour ARM64, utiliser la cible `aarch64-unknown-linux-musl` sur une machine ARM64. Le script d'archive vérifie les binaires mais ne réalise aucune compilation croisée. Le dernier test nécessite Docker et télécharge les images officielles des distributions ; Docker n'est pas requis pour installer ou utiliser AgentRun.
+
+Pour vérifier aussi l'enregistrement avec le vrai CLI Codex, ajouter `--codex "$(command -v codex)"` à `scripts/test_setup.py`. Tous ses fichiers sont créés dans des répertoires temporaires ; la configuration Codex de l'utilisateur n'est pas modifiée.

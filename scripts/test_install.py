@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix='agentrun-install-test-') as temp:
 
     assert install().returncode == 0
     assert config.read_text() == 'preserve user policy\n'
-    for name in ('agentrun', 'agentrun-mcp', 'agentrun-log'):
+    for name in ('agentrun', 'agentrun-mcp', 'agentrun-log', 'agentrun-setup'):
         assert (home / '.local/bin' / name).read_bytes() == (bundle / name).read_bytes()
     assert install('--prefix', 'relative').returncode != 0
     prefix = root / 'prefix with spaces'
@@ -45,6 +45,16 @@ with tempfile.TemporaryDirectory(prefix='agentrun-install-test-') as temp:
     assert install('--prefix', str(prefix)).returncode != 0
     assert sentinel.read_text() == 'do not overwrite'
     assert (prefix / 'bin/agentrun').read_text() == 'existing CLI'
+
+    # The utility must pass the same no-clobber preflight as the binaries.
+    utility_prefix = root / 'utility-symlink'
+    assert install('--prefix', str(utility_prefix)).returncode == 0
+    (utility_prefix / 'bin/agentrun').write_text('existing CLI')
+    (utility_prefix / 'bin/agentrun-setup').unlink()
+    (utility_prefix / 'bin/agentrun-setup').symlink_to(sentinel)
+    assert install('--prefix', str(utility_prefix)).returncode != 0
+    assert (utility_prefix / 'bin/agentrun').read_text() == 'existing CLI'
+    assert sentinel.read_text() == 'do not overwrite'
 
     # Only the installer platform probe is substituted, never Core process tests.
     commands = root / 'commands'
