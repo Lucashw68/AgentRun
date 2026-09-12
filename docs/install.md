@@ -36,11 +36,11 @@ Pour choisir une version et un emplacement, réutiliser le script téléchargé 
 
 ```bash
 sh install-agentrun.sh --repo Lucashw68/AgentRun \
-  --version 0.3.4 --prefix "$HOME/Applications/agentrun"
+  --version 0.3.5 --prefix "$HOME/Applications/agentrun"
 export PATH="$HOME/Applications/agentrun/bin:$PATH"
 ```
 
-`--version` accepte `0.3.4` ou `v0.3.4`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Pour mettre à jour, relancer la commande d'installation avec le même préfixe ; aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Reconnecter les clients MCP pour charger les nouveaux binaires. La configuration et le registre existants sont conservés.
+`--version` accepte `0.3.5` ou `v0.3.5`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Pour mettre à jour, relancer la commande d'installation avec le même préfixe ; aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Reconnecter les clients MCP pour charger les nouveaux binaires. La configuration et le registre existants sont conservés.
 
 Pour actualiser aussi les consignes Codex après une mise à jour, relancer `agentrun-setup codex`, puis ouvrir une nouvelle session. Cette étape remplace uniquement le bloc de consignes AgentRun ; elle n'écrase ni les profils/racines existants ni les autres instructions.
 
@@ -64,8 +64,8 @@ Ouvrir les [releases publiques AgentRun](https://github.com/Lucashw68/AgentRun/r
 
 | Résultat de `uname -m` | Archive |
 | --- | --- |
-| `x86_64` | `agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz` |
-| `aarch64` ou `arm64` | `agentrun-0.3.4-aarch64-unknown-linux-musl.tar.gz` |
+| `x86_64` | `agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz` |
+| `aarch64` ou `arm64` | `agentrun-0.3.5-aarch64-unknown-linux-musl.tar.gz` |
 
 Les fichiers `Source code` générés par GitHub ne contiennent pas les exécutables. Choisir les assets nommés ci-dessus. Les architectures 32 bits ne sont pas distribuées.
 
@@ -89,9 +89,9 @@ Le [cycle des noyaux Ubuntu](https://ubuntu.com/kernel/docs/reference/hwe-kernel
 Depuis le dossier de téléchargement, exemple x86_64 :
 
 ```bash
-sha256sum -c agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz.sha256
-tar -xzf agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz
-cd agentrun-0.3.4-x86_64-unknown-linux-musl
+sha256sum -c agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz.sha256
+tar -xzf agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz
+cd agentrun-0.3.5-x86_64-unknown-linux-musl
 sh ./install.sh
 export PATH="$HOME/.local/bin:$PATH"
 agentrun --version

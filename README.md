@@ -175,7 +175,7 @@ $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
 $XDG_CONFIG_HOME/agentrun/config.json  défaut : ~/.config/agentrun/config.json
 ```
 
-Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.4`.
+Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.5`.
 
 Chaque entrée conserve :
 
@@ -304,6 +304,12 @@ Budgets fixes du MVP, partagés par le Core :
 Un dépassement du budget de trame ou de requêtes en vol ferme la connexion stdio ; le client doit se reconnecter. Les identifiants de requêtes dupliqués en vol sont également refusés. Le permis d'une opération annulée reste détenu jusqu'à la fin effective du travail bloquant. Aucun de ces budgets ne constitue un quota CPU/RAM des programmes lancés.
 
 La création des threads de récupération des enfants est vérifiée. Si elle échoue, le lancement est abandonné et l'enfant est arrêté/récupéré. Les échanges d'initialisation attendent au plus cinq secondes avant de déclencher le nettoyage ; une tâche bloquée dans le noyau peut néanmoins retarder sa terminaison.
+
+## Projets Docker Compose et services externes
+
+AgentRun n'a actuellement aucun support natif des stacks Docker Compose ou des services systemd. Les consignes 0.3.5 demandent de reconnaître ces workflows, d'expliquer la limite et de proposer leur gestionnaire existant avec l'autorisation appropriée. L'agent ne doit pas créer de lanceur ou modifier le projet uniquement pour l'adapter à AgentRun. Le suivi du PID d'un client Docker ne constitue pas une supervision de ses conteneurs.
+
+Un futur adaptateur Compose dans le Core pourrait gérer des stacks par leurs identifiants Docker, sans réécrire les projets ni remplacer Compose. Voir le [périmètre actuel et la piste d'évolution](docs/service-managers.md).
 
 ## Intégration Codex et autres agents
 

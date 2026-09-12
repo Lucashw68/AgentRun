@@ -49,10 +49,10 @@ cargo build --locked --release --bins --target x86_64-unknown-linux-musl
 python3 scripts/verify_static.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
 python3 scripts/resource_soak.py --bin-dir target/x86_64-unknown-linux-musl/release --cycles 10
 python3 scripts/package_binaries.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
-python3 scripts/test_install.py --archive dist/agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz
-python3 scripts/test_download_install.py --archive dist/agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz
-python3 scripts/test_setup.py --archive dist/agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz
-python3 scripts/distribution_smoke.py --archive dist/agentrun-0.3.4-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_install.py --archive dist/agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_download_install.py --archive dist/agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/test_setup.py --archive dist/agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/distribution_smoke.py --archive dist/agentrun-0.3.5-x86_64-unknown-linux-musl.tar.gz
 ```
 
 Pour ARM64, utiliser la cible `aarch64-unknown-linux-musl` sur une machine ARM64. Le script d'archive vérifie les binaires mais ne réalise aucune compilation croisée. Le dernier test nécessite Docker et télécharge les images officielles des distributions ; Docker n'est pas requis pour installer ou utiliser AgentRun.
