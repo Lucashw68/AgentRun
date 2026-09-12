@@ -4,48 +4,53 @@ Les releases à partir de **0.3.1** fournissent des binaires statiques musl pour
 
 ## Téléchargement et installation automatiques
 
-La release fournit aussi **`install-agentrun.sh`**, qui détecte l'architecture, choisit la dernière release stable, télécharge l'archive et son checksum, vérifie SHA-256 puis lance l'installation utilisateur. Remplacer `OWNER/REPOSITORY` par le dépôt GitHub AgentRun souhaité. Aucune identité de compte n'est intégrée au script.
+**Installer la dernière release publique en une commande, sans compte GitHub ni sudo :**
 
-Pour un **dépôt privé**, avec GitHub CLI installé et authentifié (`gh auth login` si nécessaire) :
+```bash
+curl -qfsSL --proto '=https' --proto-redir '=https' https://github.com/Lucashw68/AgentRun/releases/latest/download/install-agentrun.sh -o install-agentrun.sh && sh install-agentrun.sh --repo Lucashw68/AgentRun
+```
+
+Le script détecte l'architecture, choisit la dernière release stable, télécharge l'archive et son checksum, vérifie SHA-256 puis installe les trois exécutables dans `~/.local/bin`. Le `&&` empêche l'exécution du script si le téléchargement échoue. Pour le lire avant exécution, lancer séparément les deux commandes situées de part et d'autre du `&&`.
+
+Ajouter le répertoire au PATH si nécessaire et vérifier l'installation :
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+agentrun --version
+agentrun list --json
+```
+
+Cette ligne `export` s'applique au terminal actuel. Si `~/.local/bin` ne figure pas déjà dans le PATH, ajouter la ligne à la configuration de son shell pour les futurs terminaux, par exemple `~/.bashrc` avec Bash ou `~/.zshrc` avec Zsh. L'installateur ne modifie pas ces fichiers.
+
+Le script exige Linux 6.9+, `curl`, `tar`, `sha256sum` et les outils POSIX usuels. Il ne télécharge aucun de ces prérequis. Les architectures prises en charge sont x86_64 et ARM64.
+
+Pour choisir une version et un emplacement, réutiliser le script téléchargé :
+
+```bash
+sh install-agentrun.sh --repo Lucashw68/AgentRun \
+  --version 0.3.2 --prefix "$HOME/Applications/agentrun"
+export PATH="$HOME/Applications/agentrun/bin:$PATH"
+```
+
+`--version` accepte `0.3.2` ou `v0.3.2`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Pour mettre à jour, relancer la commande d'installation avec le même préfixe ; aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Reconnecter les clients MCP pour charger les nouveaux binaires. La configuration et le registre existants sont conservés.
+
+Les téléchargements publics et leurs redirections sont limités à HTTPS avec validation TLS ; le script ignore `.curlrc`. Les fichiers sont placés dans un répertoire temporaire privé et supprimés à la sortie. Le checksum est contrôlé avant toute extraction ou exécution ; seuls les trois binaires et l'installateur régulier de l'archive sont extraits vers des destinations fixes. Un échec de téléchargement, un checksum incorrect ou une archive incomplète ne remplace pas l'installation existante. SHA-256 protège l'intégrité du transfert, sans remplacer la confiance dans le dépôt choisi et dans le script initial.
+
+### Variante pour un fork privé
+
+L'installation du dépôt public AgentRun ne nécessite pas GitHub CLI. Pour un fork privé, remplacer `OWNER/REPOSITORY` par son dépôt et utiliser GitHub CLI installé et authentifié (`gh auth login` si nécessaire) :
 
 ```bash
 agentrun_repo=OWNER/REPOSITORY
 gh release download --repo "$agentrun_repo" --pattern install-agentrun.sh --output install-agentrun.sh &&
 sh install-agentrun.sh --repo "$agentrun_repo" --github-cli
-export PATH="$HOME/.local/bin:$PATH"
-agentrun --version
 ```
 
-Le compte connecté doit avoir accès au dépôt. `--github-cli` utilise l'authentification de `gh` sans afficher de token ni le passer dans les arguments. Ce mode convient aussi à un dépôt public.
-
-Pour un **dépôt public**, avec `curl` :
-
-```bash
-agentrun_repo=OWNER/REPOSITORY
-curl -q --fail --show-error --silent --location --proto '=https' --proto-redir '=https' \
-  "https://github.com/$agentrun_repo/releases/latest/download/install-agentrun.sh" \
-  --output install-agentrun.sh &&
-sh install-agentrun.sh --repo "$agentrun_repo"
-export PATH="$HOME/.local/bin:$PATH"
-agentrun --version
-```
-
-Le script téléchargé peut être lu avant exécution. Il exige `tar`, `sha256sum` et les outils POSIX usuels, plus `curl` ou `gh` selon le mode. Il ne télécharge aucun de ces prérequis. Un dépôt privé renvoie généralement 404 aux téléchargements anonymes : utiliser le mode GitHub CLI, sans changer la visibilité du dépôt.
-
-Pour choisir une version et un emplacement :
-
-```bash
-sh install-agentrun.sh --repo "$agentrun_repo" --github-cli \
-  --version 0.3.2 --prefix "$HOME/Applications/agentrun"
-```
-
-`--version` accepte `0.3.2` ou `v0.3.2`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Pour réutiliser un script déjà téléchargé, relancer `sh install-agentrun.sh ...` ; GitHub CLI refuse d'écraser un fichier local existant sans son option `--clobber`.
-
-Les téléchargements publics et leurs redirections sont limités à HTTPS avec validation TLS ; le script ignore `.curlrc`. Les fichiers sont placés dans un répertoire temporaire privé et supprimés à la sortie. Le checksum est contrôlé avant toute extraction ou exécution ; seuls les trois binaires et l'installateur régulier de l'archive sont extraits vers des destinations fixes. Un échec de téléchargement, un checksum incorrect ou une archive incomplète ne remplace pas l'installation existante. SHA-256 protège l'intégrité du transfert, sans remplacer la confiance dans le dépôt choisi et dans le script initial.
+Le compte connecté doit avoir accès au dépôt. `--github-cli` utilise l'authentification de `gh` sans afficher de token ni le passer dans les arguments ; ce mode convient aussi à un dépôt public. Un dépôt privé renvoie généralement 404 aux téléchargements anonymes. GitHub CLI refuse d'écraser un script local existant sans son option `--clobber` ; un script déjà téléchargé peut aussi être réutilisé directement avec `sh install-agentrun.sh ...`. Le script reste indépendant du propriétaire du dépôt, sélectionné explicitement par `--repo`.
 
 ## Choisir le téléchargement
 
-Ouvrir l'onglet **Releases** du dépôt GitHub et choisir la dernière version. Télécharger l'archive et son fichier `.sha256` :
+Ouvrir les [releases publiques AgentRun](https://github.com/Lucashw68/AgentRun/releases/latest) et choisir la dernière version. Télécharger l'archive et son fichier `.sha256` :
 
 | Résultat de `uname -m` | Archive |
 | --- | --- |

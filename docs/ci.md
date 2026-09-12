@@ -26,7 +26,7 @@ Après extraction de l'artifact GitHub, on obtient une archive `agentrun-<versio
 
 Les artifacts de CI sont conservés 14 jours. Les binaires statiques sont indépendants de la glibc de la distribution ; Linux 6.9+ reste nécessaire à l'exécution. L'installateur `install.sh` est inclus. Voir le [guide d'installation](install.md) pour les limites de compatibilité et les commandes.
 
-Les versions publiées sont aussi disponibles dans l'onglet **Releases**, avec les mêmes archives validées et leurs checksums. La publication d'une release est une étape distincte ; le workflow CI ne publie pas automatiquement de release ni de paquet sur crates.io.
+Pour installer AgentRun, préférer les [releases publiques](https://github.com/Lucashw68/AgentRun/releases/latest), accessibles sans compte GitHub, avec les mêmes archives validées et leurs checksums. La [commande d'installation en une ligne](../README.md#installation) télécharge `install-agentrun.sh` depuis la dernière release ; ce script choisit l'archive adaptée à l'architecture et vérifie son SHA-256 avant installation. La publication d'une release est une étape distincte ; le workflow CI ne publie pas automatiquement de release ni de paquet sur crates.io.
 
 ## Permissions et maintenance
 

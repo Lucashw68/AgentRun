@@ -8,9 +8,24 @@ AgentRun conserve l'état des processus de développement persistants : serveurs
 
 ## Installation
 
-**Installation automatique :** télécharger `install-agentrun.sh` depuis l'onglet **Releases**, puis exécuter `sh install-agentrun.sh --repo OWNER/REPOSITORY` (ajouter `--github-cli` pour un dépôt privé). Le script détecte l'architecture, télécharge les binaires statiques, vérifie SHA-256 et installe les trois exécutables sans sudo. Le [guide d'installation Linux](docs/install.md#téléchargement-et-installation-automatiques) donne les commandes complètes pour les dépôts publics et privés.
+**Installer la dernière version en une commande, sans sudo ni compte GitHub :**
 
-Les archives Linux statiques musl pour x86_64 et ARM64 restent téléchargeables manuellement, pour Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Aucun compilateur n'est requis ; chaque archive contient aussi `install.sh` pour une installation hors ligne.
+```bash
+curl -qfsSL --proto '=https' --proto-redir '=https' https://github.com/Lucashw68/AgentRun/releases/latest/download/install-agentrun.sh -o install-agentrun.sh && sh install-agentrun.sh --repo Lucashw68/AgentRun
+```
+
+Le script détecte l'architecture, télécharge les binaires statiques, vérifie leur SHA-256 et installe `agentrun`, `agentrun-mcp` et `agentrun-log` dans `~/.local/bin`. Le `&&` lance le script uniquement si son téléchargement réussit. Prérequis : **Linux 6.9+, x86_64 ou ARM64**, `curl`, `tar`, `sha256sum` et les outils POSIX usuels.
+
+Ajouter le répertoire au PATH si nécessaire, puis vérifier l'installation :
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+agentrun --version
+```
+
+L'installateur ne modifie pas les fichiers de shell ; ajouter cette ligne `export` à la configuration de son shell pour la conserver dans les futurs terminaux si le répertoire n'y figure pas déjà. Voir le [guide d'installation Linux](docs/install.md#téléchargement-et-installation-automatiques) pour choisir une version, un autre emplacement ou installer hors ligne.
+
+Les archives Linux statiques musl pour x86_64 et ARM64 sont aussi disponibles dans les [releases publiques](https://github.com/Lucashw68/AgentRun/releases/latest), pour Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Aucun compilateur n'est requis ; chaque archive contient aussi `install.sh` pour une installation hors ligne.
 
 Pour compiler depuis les sources avec une toolchain Rust compatible avec `Cargo.toml` :
 
@@ -34,7 +49,7 @@ Conserver les trois binaires dans le même répertoire : le Core résout le coll
 
 Sans installation depuis les sources compilées : `./target/release/agentrun list --json` et `./target/release/agentrun-mcp`. Le build Cargo par défaut cible la libc de la machine ; les archives musl des releases embarquent leur libc. Dans les deux cas, Linux 6.9+ et les appels pidfd restent nécessaires.
 
-Pour installer Rust, consulter les [instructions officielles Rust](https://rust-lang.org/tools/install/). Le projet ne lance aucun installateur et ne modifie pas votre configuration de shell.
+Pour installer Rust, consulter les [instructions officielles Rust](https://rust-lang.org/tools/install/). L'installateur AgentRun n'installe pas Rust et ne modifie pas votre configuration de shell.
 
 ## CLI
 

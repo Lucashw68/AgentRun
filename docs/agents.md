@@ -6,7 +6,15 @@ Deux configurations sont nécessaires : la **politique AgentRun**, qui autorise 
 
 ## 1. Installer les trois binaires
 
-Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Le [guide d'installation](install.md#téléchargement-et-installation-automatiques) propose un script qui télécharge, vérifie et installe les trois binaires, avec prise en charge des dépôts publics et privés. Les archives permettent aussi une installation hors ligne avec `sh ./install.sh`, sans Cargo. Après une installation automatique, télécharger ou copier `examples/config.json` depuis le dépôt pour l'étape 2 ; après extraction manuelle, ce fichier est déjà dans le dossier extrait.
+Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Installer la dernière release publique, sans compte GitHub ni sudo :
+
+```bash
+curl -qfsSL --proto '=https' --proto-redir '=https' https://github.com/Lucashw68/AgentRun/releases/latest/download/install-agentrun.sh -o install-agentrun.sh && sh install-agentrun.sh --repo Lucashw68/AgentRun
+export PATH="$HOME/.local/bin:$PATH"
+agentrun --version
+```
+
+Le script télécharge les trois binaires adaptés à l'architecture, vérifie leur SHA-256 et les installe dans `~/.local/bin`. Le [guide d'installation](install.md#téléchargement-et-installation-automatiques) détaille les prérequis, le PATH permanent et les autres méthodes. Les archives permettent aussi une installation hors ligne avec `sh ./install.sh`, sans Cargo. Après une installation automatique, télécharger ou copier le [fichier initial `examples/config.json`](../examples/config.json) depuis le dépôt pour l'étape 2 ; après extraction manuelle, ce fichier est déjà dans le dossier extrait.
 
 Pour une installation depuis les sources, depuis le dépôt AgentRun avec Cargo :
 
