@@ -73,7 +73,7 @@ class SetupTests(unittest.TestCase):
     def test_default_policy_and_idempotent_registration(self):
         self.run_setup()
         self.assertEqual(json.loads(self.policy.read_text()), EXPECTED)
-        self.assertEqual(len(EXPECTED['profiles']), 36)
+        self.assertEqual(len(EXPECTED['profiles']), 38)
         self.assertEqual(self.policy.stat().st_mode & 0o777, 0o600)
         before = self.instructions.read_bytes()
         modified = self.instructions.stat().st_mtime_ns

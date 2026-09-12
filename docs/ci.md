@@ -6,7 +6,7 @@ Chaque architecture exécute les mêmes étapes :
 
 1. Vérification de Linux 6.9 minimum, nécessaire aux signaux de groupe via pidfd. Les tests échouent si les appels système requis sont interdits ; ils ne sont pas ignorés.
 2. Installation de Rust 1.98.1 avec rustfmt et Clippy.
-3. Formatage, Clippy avec avertissements traités comme erreurs, puis tous les tests Rust, dont les intégrations avec de vrais processus Linux.
+3. Formatage, Clippy avec avertissements traités comme erreurs, puis les tests Rust avec de vrais processus Linux et Make. Les intégrations Docker marquées `ignore` dans la commande générale sont exécutées explicitement dans une étape dédiée : image Alpine, véritable Compose, cycle MCP, dépendances de santé, identité et préservation des volumes.
 4. Compilation release des trois binaires statiques musl, avec `rust-lld`, `crt-static` et dépendances verrouillées par `Cargo.lock`. Contrôle ELF de l'architecture, de l'absence d'interpréteur dynamique et de bibliothèques partagées requises.
 5. Dix cycles MCP start/logs/restart/stop/clean sur les binaires release, avec contrôle des ressources et de l'absence de sockets du MCP.
 6. Création des archives et sommes SHA-256, tests de l'installateur hors ligne, puis installation et essais CLI/MCP dans Ubuntu, Fedora, Debian et Alpine. Arch est testé sur x86_64. Les conteneurs tournent sans réseau, sans capacités Linux et avec un utilisateur non privilégié ; ils partagent le noyau du runner.

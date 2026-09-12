@@ -1,6 +1,6 @@
 # Profils de développement fournis
 
-[examples/config.json](../examples/config.json) fournit **36 profils** prêts à copier dans la configuration utilisateur. La racine initiale reste `~/.codex/worktrees`. Le [guide des agents](agents.md#2-configurer-les-racines-et-profils-agentrun) explique l'installation sans écraser une configuration existante.
+[examples/config.json](../examples/config.json) fournit **38 profils** prêts à copier dans la configuration utilisateur. La racine initiale reste `~/.codex/worktrees`. Le [guide des agents](agents.md#2-configurer-les-racines-et-profils-agentrun) explique l'installation sans écraser une configuration existante.
 
 Ce catalogue couvre les usages courants ; il ne peut pas deviner les scripts, points d'entrée ou versions de chaque projet. Un profil inconnu reste refusé. Les profils ne sont pas activés automatiquement dans une configuration déjà installée : y reporter les entrées souhaitées manuellement. Aucun paquet ni runtime n'est installé par AgentRun.
 
@@ -61,3 +61,11 @@ Un profil dont le runtime n'est pas installé ne bloque pas les autres profils. 
 Les commandes exactes sont dans le JSON. Pour une autre entrée (`src.main:app`, un worker particulier, un port distinct), créer ou modifier un profil dans la politique utilisateur. MCP n'accepte aucun argument supplémentaire. Deux worktrees peuvent utiliser le même profil avec des IDs distincts, mais un port fixe peut être occupé : choisir des profils avec des ports distincts si nécessaire.
 
 Ces profils autorisent l'exécution de code dans les racines approuvées ; **ils ne constituent pas une isolation**. Les scripts npm, compilateurs, plugins et applications conservent les droits et l'environnement du client. Cargo, Go, Maven ou d'autres outils peuvent télécharger des dépendances. L'adresse d'écoute des scripts et applications Rust, Go, .NET, Java et Nest dépend de leur propre configuration. Seul le serveur MCP AgentRun lui-même n'ouvre aucun port réseau.
+
+## Make et Docker Compose
+
+`make-dev` sélectionne la cible `dev` du `Makefile` existant. Elle doit rester au premier plan ; utiliser `start_process` ou `agentrun start --profile make-dev`.
+
+`compose-dev` sélectionne `compose.yml`, sans build ni téléchargement d'image implicite. Utiliser `start_stack` ou `agentrun stack start --profile compose-dev`. Adapter explicitement les fichiers et options aux recettes du projet. Docker et Compose sont requis uniquement pour ce profil.
+
+Voir le [guide Compose et Makefiles](service-managers.md), notamment pour les fichiers d'environnement générés par une cible de préparation existante.

@@ -115,7 +115,7 @@ Les archives restent utilisables sans installation : `./agentrun list --json`, p
 
 ## Configuration et agents
 
-Utiliser `agentrun-setup codex` ou `agentrun-setup config`, puis suivre le [guide des agents](agents.md#configuration-automatique-recommandée) pour les détails et les autres clients. Le [catalogue](profiles.md) décrit les 36 profils disponibles. L'installation des binaires n'autorise pas automatiquement le lancement de projets via MCP.
+Utiliser `agentrun-setup codex` ou `agentrun-setup config`, puis suivre le [guide des agents](agents.md#configuration-automatique-recommandée) pour les détails et les autres clients. Le [catalogue](profiles.md) décrit les 38 profils disponibles. L'installation des binaires n'autorise pas automatiquement le lancement de projets via MCP.
 
 ## Compilation depuis les sources
 

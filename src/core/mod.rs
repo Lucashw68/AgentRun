@@ -1,3 +1,5 @@
+mod command_runner;
+pub mod compose;
 pub mod error;
 mod launch;
 pub mod limits;
@@ -8,12 +10,14 @@ pub mod proc;
 mod process_manager;
 pub mod registry;
 mod security_policy;
+mod stacks;
 pub mod types;
 pub mod validation;
 
 pub use error::{Error, Result};
 pub use paths::Paths;
 use registry::{Registry, Transaction};
+pub use security_policy::{ComposeProfile, MakeTarget, PullPolicy};
 use std::{path::Path, time::Duration};
 pub use types::*;
 
@@ -79,11 +83,29 @@ impl AgentRun {
         self.start_inner(request, &mut self.transaction(&registry)?)
     }
     pub fn start_profile(&self, request: ProfileRequest, client: &str) -> Result<ManagedProcess> {
+        self.start_configured(
+            request,
+            Owner {
+                kind: OwnerType::Agent,
+                client: Some(client.into()),
+            },
+        )
+    }
+    pub fn start_configured(
+        &self,
+        request: ProfileRequest,
+        owner: Owner,
+    ) -> Result<ManagedProcess> {
         // Resolve policy inside the same Core transaction as the launch.
         let registry = Registry::new(self.paths.clone());
         let mut tx = self.transaction(&registry)?;
         let profile = request.profile.clone();
-        let request = security_policy::resolve(&self.paths.config, request, client)?;
+        let mut request = security_policy::resolve(
+            &self.paths.config,
+            request,
+            owner.client.as_deref().unwrap_or("manual"),
+        )?;
+        request.owner = owner;
         self.start_record(request, Some(profile), &mut tx)
     }
     fn start_inner(
@@ -102,7 +124,9 @@ impl AgentRun {
         validation::id(&request.id)?;
         validation::command(&request.command)?;
         validation::owner(&request.owner)?;
-        if tx.data.processes.iter().any(|p| p.id == request.id) {
+        if tx.data.processes.iter().any(|p| p.id == request.id)
+            || tx.data.stacks.iter().any(|s| s.id == request.id)
+        {
             return Err(Error::new(
                 "ID_EXISTS",
                 format!("ID already registered: {}. Clean before reuse.", request.id),
@@ -259,12 +283,29 @@ impl AgentRun {
                 }),
             }
         }
+        drop(tx);
+        for stack in self.list_stacks()? {
+            if matches!(
+                stack.status,
+                compose::StackStatus::Stopped | compose::StackStatus::Missing
+            ) {
+                continue;
+            }
+            match self.stop_stack(&stack.id) {
+                Ok(_) => result.stopped.push(stack.id),
+                Err(e) => result.errors.push(StopFailure {
+                    id: stack.id,
+                    code: e.code,
+                    message: e.message,
+                }),
+            }
+        }
         Ok(result)
     }
     pub fn clean(&self) -> Result<CleanResult> {
         let registry = Registry::new(self.paths.clone());
         let mut tx = self.transaction(&registry)?;
-        let removed = tx
+        let mut removed: Vec<String> = tx
             .data
             .processes
             .iter()
@@ -272,6 +313,19 @@ impl AgentRun {
             .map(|p| p.id.clone())
             .collect();
         tx.data.processes.retain(|p| p.status == Status::Running);
+        for stack in &mut tx.data.stacks {
+            stack.refresh();
+        }
+        removed.extend(
+            tx.data
+                .stacks
+                .iter()
+                .filter(|s| s.status == compose::StackStatus::Missing)
+                .map(|s| s.id.clone()),
+        );
+        tx.data
+            .stacks
+            .retain(|s| s.status != compose::StackStatus::Missing);
         tx.save()?;
         Ok(CleanResult { removed })
     }

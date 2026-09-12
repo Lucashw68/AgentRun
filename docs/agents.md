@@ -14,13 +14,13 @@ agentrun-setup codex
 
 Cette commande réalise les trois étapes de configuration :
 
-1. Crée la politique XDG AgentRun avec les **36 profils** du fichier initial, uniquement si aucune configuration n'existe. La racine initiale est `~/.codex/worktrees`.
+1. Crée la politique XDG AgentRun avec les **38 profils** du fichier initial, uniquement si aucune configuration n'existe. La racine initiale est `~/.codex/worktrees`.
 2. Enregistre `agentrun` avec le chemin absolu du binaire `agentrun-mcp` installé à côté de l'utilitaire, via `codex mcp add`. Une inscription identique est conservée ; une inscription différente provoque un refus sans remplacement.
-3. Ajoute les consignes permanentes au fichier global `AGENTS.md` dans `CODEX_HOME` (défaut `~/.codex`). Un `AGENTS.override.md` non vide est utilisé en priorité. Le bloc délimité par `<!-- agentrun:instructions:start -->` et `<!-- agentrun:instructions:end -->` est géré par l'utilitaire ; le reste du fichier est conservé.
+3. Ajoute les consignes permanentes au fichier global `AGENTS.md` dans `CODEX_HOME` (défaut `~/.codex`). Un `AGENTS.override.md` non vide est utilisé en priorité. Le bloc délimité par `<!-- agentrun:instructions:start -->` / `<!-- agentrun:instructions:end -->` est géré par l'utilitaire ; le reste du fichier est conservé.
 
 La commande peut être relancée : elle ne duplique pas les consignes et ne remplace pas la politique existante. Elle respecte `XDG_CONFIG_HOME` absolu, avec fallback vers `~/.config`, et exige un `CODEX_HOME` absolu s'il est personnalisé. Les nouveaux fichiers de politique et de consignes sont privés (`0600`). Les liens symboliques, fichiers spéciaux et hardlinks sur les fichiers modifiés sont refusés. Des verrous empêchent deux exécutions concurrentes de l'utilitaire ; éviter de modifier les mêmes fichiers dans un éditeur pendant son exécution.
 
-Après une mise à jour d'AgentRun, relancer `agentrun-setup codex` pour remplacer uniquement son bloc de consignes par la version actuelle. Les consignes actuelles ajoutent la vérification de la politique avant lancement, le signalement groupé des blocages et l'attribution correcte des refus. Depuis 0.3.5, elles distinguent aussi les processus locaux des stacks gérées par Docker Compose ou un autre gestionnaire, sans proposer de modifier le projet pour l'adapter à AgentRun. Une nouvelle session Codex charge ces changements ; les anciennes sessions ne sont pas mises à jour par l'utilitaire.
+Après une mise à jour d'AgentRun, relancer `agentrun-setup codex` pour remplacer uniquement son bloc de consignes par la version actuelle. Les consignes actuelles ajoutent la vérification de la politique avant lancement, le signalement groupé des blocages et l'attribution correcte des refus. Depuis 0.4.0, elles utilisent les profils Make et le backend Compose natif, et distinguent les processus locaux des stacks gérées par Docker Compose ou un autre gestionnaire, sans proposer de modifier le projet pour l'adapter à AgentRun. Une nouvelle session Codex charge ces changements ; les anciennes sessions ne sont pas mises à jour par l'utilitaire.
 
 Aucun téléchargement, sudo, modification du PATH ou démarrage de processus de développement. Les projets et profils autorisés conservent les droits de l'utilisateur : cet utilitaire n'ajoute pas de sandbox. Une erreur est signalée avec un code de sortie non nul ; si une étape a déjà réussi, elle reste en place et une nouvelle exécution peut terminer la configuration après correction. Le CLI Codex effectue lui-même les modifications de `config.toml`, en préservant ses autres réglages.
 
@@ -46,9 +46,7 @@ python3 scripts/setup.py config
 
 ## Docker Compose et autres gestionnaires
 
-Un projet peut avoir son propre gestionnaire de services. Pour une stack Docker Compose ou systemd, les consignes demandent d'expliquer la limite actuelle d'AgentRun et de proposer le workflow existant avec l'autorisation appropriée. Ne pas ajouter un script dans le projet ni changer sa configuration pour forcer l'intégration ; un profil supplémentaire ne fournit pas les garanties manquantes de suivi et d'arrêt des services.
-
-Cette règle concerne le composant lancé : un serveur local peut être géré par AgentRun même si une base Docker existe à côté. Elle ne permet pas de contourner un refus de politique pour ce serveur local. Voir le [guide des gestionnaires externes](service-managers.md) pour les limites actuelles et un éventuel support futur de Compose.
+Depuis 0.4.0, utiliser les profils Make pour les serveurs au premier plan et les outils de stack pour Docker Compose local. Un `make up` qui délègue à Docker doit être examiné pour déclarer la recette Compose existante, sans ajouter de wrapper ni réécrire le projet. systemd et les fonctionnalités Compose non prises en charge conservent leur workflow existant. Voir le [guide Compose et Makefiles](service-managers.md).
 
 ## 1. Installer les trois binaires
 
@@ -103,7 +101,7 @@ if [ ! -e "$agentrun_config_base/agentrun/config.json" ] && \
 fi
 ```
 
-Le fichier initial contient **36 profils** ; voir le [catalogue complet et ses prérequis](profiles.md). La copie ci-dessus les installe tous pour une nouvelle configuration. Voici un extrait minimal :
+Le fichier initial contient **38 profils** ; voir le [catalogue complet et ses prérequis](profiles.md). La copie ci-dessus les installe tous pour une nouvelle configuration. Voici un extrait minimal :
 
 ```json
 {
@@ -229,14 +227,19 @@ managed by its Core.
 - Do not create or modify project files solely to integrate AgentRun. Do not
   propose wrapper scripts, Makefile/package.json/Compose edits, or .env changes
   merely to route the project's existing workflow through AgentRun.
-- AgentRun currently has no Docker/Compose or system-service backend. For an
-  externally managed workload, explain this scope limitation and propose its
-  existing manager workflow with appropriate user authorization. Do not route
-  it through an AgentRun profile or wrapper to claim stack supervision. Tracking
-  a client PID does not establish ownership or reliable shutdown of its services.
-  An unsupported workload is not a missing-profile problem; do not propose root
-  or profile additions to solve it. This is not permission to bypass a policy or
-  approval refusal for a directly managed local process.
+- AgentRun supports foreground Make targets through process profiles and local
+  Docker Compose through stack profiles. Use start_stack/get_stack/stop_stack/
+  restart_stack/get_stack_logs for Compose, with an explicitly approved recipe.
+  Use a make profile only when the selected target keeps the server in the
+  foreground. A make up target that delegates to Docker is not a local server.
+  Inspect its existing recipe to select Compose files and a separate existing
+  preparation target, if any; never invent or rewrite project recipes.
+  prepareMake may prepare inputs or images, but must not start persistent services.
+- Compose stacks use a unique project and registered container IDs. No adoption,
+  fixed container names, rebuild-on-restart, systemd or remote Docker support.
+  An unsupported workload is not a missing-profile problem; explain the precise
+  unsupported feature and propose its existing workflow with appropriate
+  authorization. Never bypass a policy or approval refusal.
 - For a directly managed process, before start_process or restart_process, read
   the current AgentRun policy used by the MCP server: $XDG_CONFIG_HOME/agentrun/config.json when that base
   is absolute, otherwise ~/.config/agentrun/config.json. Check the actual
@@ -247,7 +250,9 @@ managed by its Core.
   inaccessible or uncertain, report that instead of inventing its contents.
 - Read only relevant policy fields and launch sections; avoid dumping entire
   configuration files or secrets into the conversation.
-- For supported local processes with policy blockers:
+- Apply the same current-policy and allowedRoots preflight to start_stack and
+  restart_stack. A Compose profile must match the existing Compose recipe.
+- For supported processes or stacks with policy blockers:
   Report all known blockers together, including both a missing profile and
   a disallowed cwd. Propose the exact minimal root/profile change. Change
   policy only with explicit user authorization; do not ask again for a change
@@ -264,7 +269,8 @@ managed by its Core.
   AgentRun refused it. Report the actual reason and, for tool errors, its code.
 - If a profile or cwd is refused, report it. Do not bypass the policy via the
   CLI, a shell command, or by silently changing the AgentRun configuration.
-- After a launch/restart, inspect logs and get_process or list_processes
+- After a launch/restart, inspect the corresponding logs and process/stack
+  status (get_process/get_stack or list_processes)
   before announcing readiness or a URL. Ports may be empty during startup.
 - A failed HTTP probe only means that endpoint was unreachable from that
   execution context at that time; it does not prove an entire stack is stopped.
@@ -285,7 +291,7 @@ Dans une nouvelle session, demander :
 
 > Utilise l'outil MCP AgentRun `list_processes` pour vérifier la connexion. Ne démarre aucun processus et ne remplace pas cet appel par une commande terminal.
 
-La réponse doit provenir de l'outil MCP et contenir `version: 1` et une liste `processes`, éventuellement vide. Vérifier ensuite que les sept outils sont disponibles : `list_processes`, `get_process`, `start_process`, `stop_process`, `restart_process`, `get_logs`, `clean_registry`.
+La réponse doit provenir de l'outil MCP et contenir `version: 1` et une liste `processes`, éventuellement vide. Vérifier ensuite les outils de processus : `list_processes`, `get_process`, `start_process`, `stop_process`, `restart_process`, `get_logs`, `clean_registry`. Six outils de stack sont également disponibles : `list_stacks`, `get_stack`, `start_stack`, `stop_stack`, `restart_stack`, `get_stack_logs`.
 
 Pour un premier démarrage, choisir un projet autorisé et son profil existant, puis demander à l'agent d'appeler par exemple :
 

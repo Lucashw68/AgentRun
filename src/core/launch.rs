@@ -106,6 +106,19 @@ impl PendingChild {
             })
             .collect::<Result<_>>()?;
         let environment: Vec<CString> = env::vars_os()
+            .filter(|(key, _)| {
+                !matches!(
+                    key.to_str(),
+                    Some(
+                        "MAKEFLAGS"
+                            | "GNUMAKEFLAGS"
+                            | "MAKEFILES"
+                            | "MFLAGS"
+                            | "MAKEOVERRIDES"
+                            | "MAKELEVEL"
+                    )
+                )
+            })
             .map(|(key, value)| {
                 let mut bytes = key.as_bytes().to_vec();
                 bytes.push(b'=');

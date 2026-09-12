@@ -31,7 +31,7 @@ L'installateur ne modifie pas les fichiers de shell ; ajouter cette ligne `expor
 agentrun-setup codex
 ```
 
-Cet utilitaire, inclus à partir de **0.3.3**, installe la configuration initiale avec les 36 profils si elle est absente, enregistre le serveur MCP local dans Codex et ajoute les consignes permanentes AgentRun. Il nécessite **Python 3.8+ et le CLI Codex**. Il conserve les configurations existantes et peut être relancé sans dupliquer les consignes. Les racines initiales autorisent `~/.codex/worktrees` ; ajouter explicitement les autres répertoires souhaités à `allowedRoots`.
+Cet utilitaire, inclus à partir de **0.3.3**, installe la configuration initiale avec les 38 profils si elle est absente, enregistre le serveur MCP local dans Codex et ajoute les consignes permanentes AgentRun. Il nécessite **Python 3.8+ et le CLI Codex**. Il conserve les configurations existantes et peut être relancé sans dupliquer les consignes. Les racines initiales autorisent `~/.codex/worktrees` ; ajouter explicitement les autres répertoires souhaités à `allowedRoots`.
 
 Ouvrir ensuite une nouvelle session Codex et demander : « Utilise l'outil MCP AgentRun `list_processes` pour vérifier la connexion. » Pour les autres agents, `agentrun-setup config` prépare seulement la politique ; voir le [guide de configuration](docs/agents.md#configuration-automatique-recommandée).
 
@@ -142,13 +142,15 @@ src/
 ├── bin/agentrun.rs           CLI clap, rendu humain/JSON
 ├── bin/agentrun-mcp.rs       transport stdio uniquement
 ├── bin/agentrun-log.rs       collecteur interne de logs, sans réseau
-├── mcp.rs                    sept outils du SDK MCP Rust officiel
+├── mcp.rs                    treize outils du SDK MCP Rust officiel
 ├── mcp/transport.rs          budgets stdio avant buffering/dispatch
 └── core/
     ├── mod.rs                façade AgentRun et transactions
     ├── types.rs / error.rs   modèle partagé, erreurs structurées
     ├── registry.rs           verrou noyau et écriture atomique
     ├── launch.rs             fork/execve et validation avant exécution
+    ├── stacks.rs / compose.rs cycle de vie et identités Docker
+    ├── command_runner.rs     clients backend bornés, sans shell
     ├── process_manager.rs    SIGTERM, grâce, SIGKILL via pidfd
     ├── proc.rs               identité noyau, références pidfd, parcours /proc
     ├── port_detection.rs     ports TCP du groupe et des descendants
@@ -238,7 +240,7 @@ Une erreur d'écriture fait terminer le collecteur ; le programme peut alors rec
 
 Créer le fichier de configuration utilisateur ; aucun profil n'est autorisé par défaut. Sans configuration, consultation et arrêt fonctionnent, mais les démarrages MCP sont refusés.
 
-Le [fichier initial](examples/config.json) fournit **36 profils courants** : npm, pnpm, Yarn, Bun, Vite, Next, Nuxt, Astro, Angular, Nest, Python, Rust, Go, .NET, Rails, PHP et Java. Voir le [catalogue et ses prérequis](docs/profiles.md). Extrait minimal :
+Le [fichier initial](examples/config.json) fournit **38 profils courants** : npm, pnpm, Yarn, Bun, Vite, Next, Nuxt, Astro, Angular, Nest, Python, Rust, Go, .NET, Rails, PHP, Java, Make et Compose. Voir le [catalogue et ses prérequis](docs/profiles.md). Extrait minimal :
 
 ```json
 {
@@ -307,9 +309,20 @@ La création des threads de récupération des enfants est vérifiée. Si elle �
 
 ## Projets Docker Compose et services externes
 
-AgentRun n'a actuellement aucun support natif des stacks Docker Compose ou des services systemd. Les consignes 0.3.5 demandent de reconnaître ces workflows, d'expliquer la limite et de proposer leur gestionnaire existant avec l'autorisation appropriée. L'agent ne doit pas créer de lanceur ou modifier le projet uniquement pour l'adapter à AgentRun. Le suivi du PID d'un client Docker ne constitue pas une supervision de ses conteneurs.
+Depuis **0.4.0**, AgentRun gère les **Makefiles existants** et les **stacks Docker Compose locales**, sans créer de wrapper ni réécrire le projet.
 
-Un futur adaptateur Compose dans le Core pourrait gérer des stacks par leurs identifiants Docker, sans réécrire les projets ni remplacer Compose. Voir le [périmètre actuel et la piste d'évolution](docs/service-managers.md).
+```bash
+agentrun start web --profile make-dev --cwd /absolute/project
+agentrun stack start application --profile compose-dev --cwd /absolute/project
+agentrun stack status application --json
+agentrun stack logs application --tail 100
+agentrun stack restart application
+agentrun stack stop application
+```
+
+Un profil Make sélectionne une cible au premier plan. Un profil Compose déclare les fichiers existants et, éventuellement, une cible Make de préparation. Le Core suit l'identité du moteur et les IDs complets des conteneurs, respecte les dépendances de démarrage et vérifie l'arrêt sans supprimer de volumes. Les outils MCP dédiés sont `list_stacks`, `get_stack`, `start_stack`, `stop_stack`, `restart_stack`, `get_stack_logs`.
+
+`agentrun list --json` inclut les stacks ; `stop --all` arrête processus et stacks. Un redémarrage de stack réutilise ses conteneurs, sans rebuild. Aucun `make up` n'est interprété automatiquement : sa recette doit correspondre au profil approuvé. Consulter le [guide Compose et Makefiles](docs/service-managers.md) pour la configuration, les limites et la compatibilité du registre.
 
 ## Intégration Codex et autres agents
 
@@ -377,6 +390,8 @@ cargo package --locked --allow-dirty --offline
 
 Les tests compilent un petit worker Rust indépendant et utilisent de vrais processus, signaux et connexions stdio. Ils couvrent notamment la persistance avant `execve`, un parent tué par SIGKILL avant validation, l'identité altérée, les enfants résistants à SIGTERM, le leader qui disparaît, la concurrence interprocessus, les écritures atomiques, le verrou après crash, le JSON, les logs, les profils MCP et l'absence de sockets dans le serveur MCP. Ils couvrent aussi les redémarrages, la révocation des profils, les budgets de ressources, la rotation/rétention et l’échec du reaper.
 
+Les tests Make requièrent GNU Make. Les quatre intégrations Docker sont exécutées explicitement en CI ; localement, avec Docker/Compose et `alpine:3.23`, utiliser `cargo test --locked --all-targets -- --include-ignored`.
+
 Les tests nécessitent Linux 6.9+, un `/proc` accessible, `rustc`, la création de processus et un listener TCP de test sur `127.0.0.1`. Un sandbox peut interdire ces appels même sur un noyau compatible. Les tests utilisent un état temporaire séparé de votre registre.
 
 ## Limites et suite
@@ -386,7 +401,7 @@ Les tests nécessitent Linux 6.9+, un `/proc` accessible, `rustc`, la création 
 - Budgets fixes pour ce MVP ; prochaine amélioration possible : des plafonds configurables dans des bornes sûres. Les collecteurs dont un descendant échappé garde le pipe ouvert restent actifs jusqu’à sa fermeture.
 - Les ports sont des observations, pas une garantie de readiness. `start` confirme le lancement enregistré ; consulter ensuite `status`, `ports` et `logs`.
 - Les arrêts conservent le verrou. Un long `stop --all` peut faire expirer l'attente de 30 secondes d'un autre client, qui peut réessayer.
-- Pas de redémarrage automatique, autostart, supervision permanente, GUI, Docker, services système ou gestion multi-utilisateur. AgentRun reste un inventaire local de processus de développement, pas un remplaçant de systemd ou PM2.
+- Pas de redémarrage automatique, autostart, supervision permanente, GUI, services système ou gestion multi-utilisateur. AgentRun reste un inventaire local de processus de développement, pas un remplaçant de systemd ou PM2.
 
 ### Mesures mémoire reproductibles
 

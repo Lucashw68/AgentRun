@@ -36,6 +36,8 @@
     "laravel-dev": { "command": ["php", "artisan", "serve", "--host=127.0.0.1"] },
     "php-server": { "command": ["php", "-S", "127.0.0.1:8000", "-t", "public"] },
     "spring-boot": { "command": ["mvn", "spring-boot:run"] },
-    "quarkus-dev": { "command": ["mvn", "quarkus:dev"] }
+    "quarkus-dev": { "command": ["mvn", "quarkus:dev"] },
+    "make-dev": { "make": { "file": "Makefile", "target": "dev" } },
+    "compose-dev": { "compose": { "files": ["compose.yml"] } }
   }
 }

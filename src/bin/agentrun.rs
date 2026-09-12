@@ -1,6 +1,6 @@
 use agentrun::core::{
-    AgentRun, Error, ManagedProcess, Owner, OwnerType, Result, StartRequest, Status,
-    logs::terminal_safe,
+    AgentRun, Error, ManagedProcess, Owner, OwnerType, ProfileRequest, Result, StartRequest,
+    Status, logs::terminal_safe,
 };
 use clap::{Args, Parser, Subcommand};
 use serde_json::{Value, json};
@@ -28,6 +28,11 @@ struct ById {
 }
 #[derive(Subcommand)]
 enum Action {
+    /// Manage local Docker Compose containers through approved profiles.
+    Stack {
+        #[command(subcommand)]
+        command: StackAction,
+    },
     List(Output),
     Status(ById),
     /// Stop safely, then relaunch the recorded command and working directory.
@@ -42,7 +47,9 @@ enum Action {
         client: Option<String>,
         #[command(flatten)]
         output: Output,
-        #[arg(last = true, required = true, num_args = 1..)]
+        #[arg(long, conflicts_with = "command")]
+        profile: Option<String>,
+        #[arg(last = true, required_unless_present = "profile", num_args = 1..)]
         command: Vec<String>,
     },
     Stop {
@@ -62,6 +69,56 @@ enum Action {
     },
     Clean(Output),
     Ports(Output),
+}
+
+#[derive(Subcommand)]
+enum StackAction {
+    List(Output),
+    Status(ById),
+    Start {
+        id: String,
+        #[arg(long)]
+        profile: String,
+        #[arg(long)]
+        cwd: Option<String>,
+        #[command(flatten)]
+        output: Output,
+    },
+    Stop(ById),
+    Restart(ById),
+    Logs {
+        id: String,
+        #[arg(long, default_value_t = 100)]
+        tail: usize,
+        #[command(flatten)]
+        output: Output,
+    },
+}
+fn stack_table(stacks: &[agentrun::core::compose::ManagedStack]) -> String {
+    let mut rows = vec![vec![
+        "STACK".into(),
+        "STATUS".into(),
+        "CONTAINERS".into(),
+        "PORTS".into(),
+    ]];
+    rows.extend(stacks.iter().map(|s| {
+        vec![
+            s.id.clone(),
+            serde_json::to_value(&s.status)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .into(),
+            s.containers.len().to_string(),
+            ports(
+                &s.containers
+                    .iter()
+                    .flat_map(|c| c.ports.clone())
+                    .collect::<Vec<_>>(),
+            ),
+        ]
+    }));
+    table(rows)
 }
 
 fn table(rows: Vec<Vec<String>>) -> String {
@@ -136,10 +193,47 @@ fn process_table(processes: &[ManagedProcess]) -> String {
 fn run(cli: Cli) -> Result<(Value, String, bool)> {
     let core = AgentRun::from_environment()?;
     let (data, human, failed) = match cli.command {
+        Action::Stack { command } => match command {
+            StackAction::List(_) => {
+                let stacks = core.list_stacks()?;
+                let human = stack_table(&stacks);
+                (json!({"stacks": stacks}), human, false)
+            }
+            StackAction::Logs { id, tail, .. } => {
+                let logs = core.stack_logs(&id, tail)?;
+                let human = terminal_safe(&logs.text, true);
+                (serde_json::to_value(logs)?, human, false)
+            }
+            action => {
+                let stack = match action {
+                    StackAction::Status(input) => core.get_stack(&input.id)?,
+                    StackAction::Stop(input) => core.stop_stack(&input.id)?,
+                    StackAction::Restart(input) => core.restart_stack(&input.id)?,
+                    StackAction::Start {
+                        id, cwd, profile, ..
+                    } => core.start_stack(
+                        ProfileRequest {
+                            id,
+                            profile,
+                            cwd: cwd
+                                .unwrap_or(std::env::current_dir()?.to_string_lossy().into_owned()),
+                        },
+                        None,
+                    )?,
+                    _ => unreachable!(),
+                };
+                let human = stack_table(std::slice::from_ref(&stack));
+                (json!({"stack": stack}), human, false)
+            }
+        },
         Action::List(_) => {
             let processes = core.list()?;
-            let human = process_table(&processes);
-            (json!({"processes":processes}), human, false)
+            let stacks = core.list_stacks()?;
+            let mut human = process_table(&processes);
+            if !stacks.is_empty() {
+                human.push_str(&format!("\n\n{}", stack_table(&stacks)));
+            }
+            (json!({"processes":processes,"stacks":stacks}), human, false)
         }
         Action::Status(input) => {
             let p = core.get(&input.id)?;
@@ -163,6 +257,7 @@ fn run(cli: Cli) -> Result<(Value, String, bool)> {
             owner,
             client,
             command,
+            profile,
             ..
         } => {
             let kind = match owner.as_deref() {
@@ -174,12 +269,24 @@ fn run(cli: Cli) -> Result<(Value, String, bool)> {
                 _ if client.is_some() => OwnerType::Agent,
                 _ => OwnerType::Manual,
             };
-            let p = core.start(StartRequest {
-                id,
-                cwd,
-                command,
-                owner: Owner { kind, client },
-            })?;
+            let owner = Owner { kind, client };
+            let p = if let Some(profile) = profile {
+                core.start_configured(
+                    ProfileRequest {
+                        id,
+                        profile,
+                        cwd: cwd.unwrap_or(std::env::current_dir()?.to_string_lossy().into_owned()),
+                    },
+                    owner,
+                )?
+            } else {
+                core.start(StartRequest {
+                    id,
+                    cwd,
+                    command,
+                    owner,
+                })?
+            };
             let human = process_table(std::slice::from_ref(&p));
             (json!({"process":p}), human, false)
         }
@@ -221,7 +328,31 @@ fn run(cli: Cli) -> Result<(Value, String, bool)> {
                     .iter()
                     .map(|p| vec![p.id.clone(), status(p.status).into(), ports(&p.ports)]),
             );
-            (json!({"processes":processes}), table(rows), false)
+            let stacks = core.list_stacks()?;
+            let stack_ports: Vec<_> = stacks
+                .iter()
+                .map(|s| {
+                    let mut published: Vec<_> =
+                        s.containers.iter().flat_map(|c| c.ports.clone()).collect();
+                    published.sort_unstable();
+                    published.dedup();
+                    rows.push(vec![
+                        s.id.clone(),
+                        serde_json::to_value(&s.status)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .into(),
+                        ports(&published),
+                    ]);
+                    json!({"id":s.id,"status":s.status,"ports":published})
+                })
+                .collect();
+            (
+                json!({"processes":processes,"stacks":stack_ports}),
+                table(rows),
+                false,
+            )
         }
     };
     Ok((data, human, failed))

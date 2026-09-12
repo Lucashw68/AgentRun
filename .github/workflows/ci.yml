@@ -65,6 +65,12 @@ jobs:
       - name: Linux integration tests
         run: cargo test --locked --all-targets --target "$BUILD_TARGET"
 
+      - name: Native Compose integration tests
+        run: |
+          docker compose version
+          docker pull alpine:3.23
+          cargo test --locked --target "$BUILD_TARGET" --test stacks --test mcp -- --ignored
+
       - name: Build release binaries
         run: cargo build --locked --release --bins --target "$BUILD_TARGET"
 

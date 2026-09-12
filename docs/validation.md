@@ -1,4 +1,26 @@
-# Validation AgentRun 0.3.0
+# Validation AgentRun 0.4.0
+
+Validation locale du 12 septembre 2026, Linux 6.12 x86_64, Rust 1.98.1, Docker Compose 5.5.1. Les projets, configurations, registres et conteneurs de test sont temporaires et séparés de ceux de l'utilisateur.
+
+- **53 tests Rust réussis**, dont quatre intégrations Docker exécutées explicitement : 8 unitaires, 7 CLI, 24 Core, 8 MCP et 6 Make/Compose. Le total inclut les fonctions auxiliaires existantes de crash/verrou.
+- Compose réel : lancement de deux services, dépendance `service_healthy`, préparation Make produisant un fichier d'environnement, logs stdout/stderr, persistance, arrêt, redémarrage des mêmes IDs et conservation des volumes.
+- Refus d'un conteneur extérieur portant les labels du projet, identité du moteur modifiée, moteur inaccessible, journal de création sans IDs, création échouée, noms de conteneurs fixes et profil révoqué avant redémarrage.
+- Construction d'une image depuis un Dockerfile existant avec `build: true` explicitement autorisé ; suppression des seuls artefacts de test après vérification.
+- Make réel : cible existante, arrêt du groupe, refus d'options/variables/cibles invalides et de symlinks extérieurs, neutralisation des variables Make héritées. Interfaces CLI JSON et MCP stdio exercées.
+- Formatage, Clippy avec `-D warnings`, build release musl, archive et installateurs validés. Utilitaire de configuration : 15 tests réussis, un test facultatif du vrai CLI Codex non exécuté dans cette passe.
+- Dix cycles sur le MCP release : RSS de 3 292 à 3 368 Kio, 5 threads, 3 descripteurs, aucun enfant restant et registre vide à la fin. Aucune socket détenue par le MCP. Le test MCP Compose vérifie aussi les descripteurs après son cycle de vie.
+
+Commandes pour inclure les intégrations Docker (Docker local et `alpine:3.23` requis) :
+
+```bash
+cargo test --locked --all-targets -- --include-ignored
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --locked --release --bins
+```
+
+La CI exécute séparément ces intégrations sur ses deux architectures natives. Ces vérifications ne constituent pas un audit indépendant ni une preuve générale d'absence de fuite mémoire ou de faille. Les mesures et essais Valgrind ci-dessous concernent la version 0.3.0 et n'ont pas été reconduits sur le backend Compose.
+
+## Historique : validation AgentRun 0.3.0
 
 Validation locale effectuée le 12 septembre 2026, sous Linux 6.12, x86_64, avec Rust 1.98.1. Les registres, configurations et processus de test utilisent des répertoires temporaires. Aucun état utilisateur existant n'a été modifié.
 

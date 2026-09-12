@@ -72,6 +72,12 @@ pub fn registry(data: &RegistryData) -> Result<()> {
                 )
                 .is_ok()
         });
+    let valid = valid
+        && data.stacks.len() <= 16
+        && data
+            .stacks
+            .iter()
+            .all(|s| super::compose::validate(s) && ids.insert(&s.id));
     if !valid {
         return Err(Error::new(
             "REGISTRY_INVALID",

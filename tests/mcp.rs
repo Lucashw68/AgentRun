@@ -108,10 +108,16 @@ fn real_stdio_protocol_narrow_tools_policy_and_no_network() {
             "clean_registry",
             "get_logs",
             "get_process",
+            "get_stack",
+            "get_stack_logs",
             "list_processes",
+            "list_stacks",
             "restart_process",
+            "restart_stack",
             "start_process",
-            "stop_process"
+            "start_stack",
+            "stop_process",
+            "stop_stack"
         ]
     );
     let schema = &tools.iter().find(|t| t["name"] == "start_process").unwrap()["inputSchema"];
@@ -301,4 +307,116 @@ fn mcp_core_concurrency_budget_refuses_excess_work() {
         client.call("list_processes", json!({}))["structuredContent"]["processes"],
         json!([])
     );
+}
+
+#[test]
+fn mcp_make_and_stack_profiles_are_narrow_and_preflight_policy() {
+    let env = Env::new();
+    fs::write(
+        env.cwd.join("Makefile"),
+        format!("dev:\n\t{} basic\n", fixture().display()),
+    )
+    .unwrap();
+    fs::write(env.cwd.join("compose.yml"), "services: {}\n").unwrap();
+    env.config(json!({"make-dev":{"make":{"file":"Makefile","target":"dev"}},"compose":{"compose":{"files":["compose.yml"]}}}));
+    let mut client = Client::new(&env);
+    for (args, expected) in [
+        (
+            json!({"id":"stack","cwd":"/","profile":"compose"}),
+            "CWD_NOT_ALLOWED",
+        ),
+        (
+            json!({"id":"stack","cwd":env.cwd,"profile":"unknown"}),
+            "UNKNOWN_PROFILE",
+        ),
+        (
+            json!({"id":"stack","cwd":env.cwd,"profile":"compose","command":["anything"]}),
+            "VALIDATION_ERROR",
+        ),
+        (
+            json!({"id":"stack","cwd":env.cwd,"profile":"compose","target":"up"}),
+            "VALIDATION_ERROR",
+        ),
+    ] {
+        let result = client.call("start_stack", args);
+        assert_eq!(result["isError"], true, "{result}");
+        assert_eq!(
+            result["structuredContent"]["error"]["code"], expected,
+            "{result}"
+        );
+    }
+    let result = client.call(
+        "start_process",
+        json!({"id":"make-worker","cwd":env.cwd,"profile":"make-dev"}),
+    );
+    assert_ne!(result["isError"], true, "{result}");
+    let p = env.core.get("make-worker").unwrap();
+    ready(&p, "READY=");
+    assert_ne!(
+        client.call("stop_process", json!({"id":"make-worker"}))["isError"],
+        true
+    );
+    assert_eq!(
+        client.call("list_stacks", json!({}))["structuredContent"]["stacks"],
+        json!([])
+    );
+}
+
+#[test]
+#[ignore = "requires Docker and alpine:3.23; CI runs this explicitly"]
+fn real_stdio_compose_profile_lifecycle_and_no_listener() {
+    let env = Env::new();
+    fs::write(
+        env.cwd.join("compose.yml"),
+        "services:\n  web:\n    image: alpine:3.23\n    command: [sleep, '600']\n",
+    )
+    .unwrap();
+    env.config(json!({"compose":{"compose":{"files":["compose.yml"]}}}));
+    let mut client = Client::new(&env);
+    let start = client.call(
+        "start_stack",
+        json!({"id":"web","cwd":env.cwd,"profile":"compose"}),
+    );
+    assert_ne!(start["isError"], true, "{start}");
+    let stack = start["structuredContent"]["stack"].clone();
+    let fd_count = || {
+        fs::read_dir(format!("/proc/{}/fd", client.child.id()))
+            .unwrap()
+            .count()
+    };
+    let descriptors_before = fd_count();
+    let id = stack["containers"][0]["id"].as_str().unwrap();
+    assert!(agentrun::core::proc::socket_inodes(client.child.id() as i32).is_empty());
+    for tool in [
+        "get_stack",
+        "get_stack_logs",
+        "stop_stack",
+        "restart_stack",
+        "stop_stack",
+    ] {
+        let result = client.call(tool, json!({"id":"web"}));
+        assert_ne!(result["isError"], true, "{tool}: {result}");
+    }
+    let descriptors_after = fs::read_dir(format!("/proc/{}/fd", client.child.id()))
+        .unwrap()
+        .count();
+    assert!(
+        descriptors_after <= descriptors_before + 1,
+        "backend descriptors leaked"
+    );
+    let result = std::process::Command::new("docker")
+        .args(["rm", id])
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    let result = std::process::Command::new("docker")
+        .args([
+            "network",
+            "rm",
+            &format!("{}_default", stack["project"].as_str().unwrap()),
+        ])
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    assert_eq!(env.core.clean().unwrap().removed, ["web"]);
 }

@@ -58,12 +58,15 @@ pub struct ManagedProcess {
 pub struct RegistryData {
     pub version: u32,
     pub processes: Vec<ManagedProcess>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stacks: Vec<super::compose::ManagedStack>,
 }
 impl Default for RegistryData {
     fn default() -> Self {
         Self {
             version: 1,
             processes: vec![],
+            stacks: vec![],
         }
     }
 }
