@@ -5,11 +5,13 @@ import hashlib
 from pathlib import Path
 import tarfile
 import tomllib
+from verify_static import verify
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--bin-dir', required=True, type=Path)
 parser.add_argument('--target', required=True, choices=[
-    'x86_64-unknown-linux-gnu', 'aarch64-unknown-linux-gnu'])
+    'x86_64-unknown-linux-gnu', 'aarch64-unknown-linux-gnu',
+    'x86_64-unknown-linux-musl', 'aarch64-unknown-linux-musl'])
 parser.add_argument('--out-dir', type=Path, default=Path('dist'))
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
@@ -17,6 +19,9 @@ version = tomllib.loads((root / 'Cargo.toml').read_text())['package']['version']
 name = f'agentrun-{version}-{args.target}'
 files = [(args.bin_dir / binary, binary, 0o755)
          for binary in ('agentrun', 'agentrun-mcp', 'agentrun-log')]
+for path, _, _ in files:
+    verify(path, args.target)
+files += [(root / 'scripts/install.sh', 'install.sh', 0o755)]
 files += [(root / item, item, 0o644)
           for item in ('README.md', 'LICENSE', 'examples/config.json', '.github/workflows/ci.yml')]
 files += [(path, str(path.relative_to(root)), 0o644)

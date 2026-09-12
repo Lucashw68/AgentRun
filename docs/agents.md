@@ -6,7 +6,9 @@ Deux configurations sont nécessaires : la **politique AgentRun**, qui autorise 
 
 ## 1. Installer les trois binaires
 
-Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Depuis le dépôt AgentRun, avec Cargo :
+Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Les [archives Linux portables](install.md) permettent d'installer les trois binaires avec `sh ./install.sh`, sans Cargo, sur Ubuntu, Fedora, Arch et d'autres distributions. Continuer ensuite à l'étape 2 de ce guide depuis le dossier extrait.
+
+Pour une installation depuis les sources, depuis le dépôt AgentRun avec Cargo :
 
 ```bash
 cargo install --path . --locked --root "$HOME/.local"

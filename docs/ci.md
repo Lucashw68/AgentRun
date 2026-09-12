@@ -7,9 +7,10 @@ Chaque architecture exécute les mêmes étapes :
 1. Vérification de Linux 6.9 minimum, nécessaire aux signaux de groupe via pidfd. Les tests échouent si les appels système requis sont interdits ; ils ne sont pas ignorés.
 2. Installation de Rust 1.98.1 avec rustfmt et Clippy.
 3. Formatage, Clippy avec avertissements traités comme erreurs, puis tous les tests Rust, dont les intégrations avec de vrais processus Linux.
-4. Compilation release des trois binaires, avec dépendances verrouillées par `Cargo.lock`.
+4. Compilation release des trois binaires statiques musl, avec `rust-lld`, `crt-static` et dépendances verrouillées par `Cargo.lock`. Contrôle ELF de l'architecture, de l'absence d'interpréteur dynamique et de bibliothèques partagées requises.
 5. Dix cycles MCP start/logs/restart/stop/clean sur les binaires release, avec contrôle des ressources et de l'absence de sockets du MCP.
-6. Création et dépôt des archives et sommes SHA-256, après succès des étapes précédentes.
+6. Création des archives et sommes SHA-256, tests de l'installateur hors ligne, puis installation et essais CLI/MCP dans Ubuntu, Fedora, Debian et Alpine. Arch est testé sur x86_64. Les conteneurs tournent sans réseau, sans capacités Linux et avec un utilisateur non privilégié ; ils partagent le noyau du runner.
+7. Dépôt des artifacts après succès de toutes les vérifications.
 
 Les [images x86_64](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) et [ARM64](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Arm64-Readme.md) documentent leur noyau courant. La vérification du workflow protège contre un changement d'image incompatible. Le runner ARM64 doit être disponible pour le dépôt et son offre GitHub.
 
@@ -17,12 +18,14 @@ Les [images x86_64](https://github.com/actions/runner-images/blob/main/images/ub
 
 Dans `Actions`, ouvrir une exécution réussie, puis télécharger l'artifact correspondant :
 
-- `agentrun-x86_64-unknown-linux-gnu`
-- `agentrun-aarch64-unknown-linux-gnu`
+- `agentrun-x86_64-unknown-linux-musl`
+- `agentrun-aarch64-unknown-linux-musl`
 
 Après extraction de l'artifact GitHub, on obtient une archive `agentrun-<version>-<target>.tar.gz` et son fichier `.tar.gz.sha256`. Vérifier l'archive avec `sha256sum -c <archive>.sha256`, puis l'extraire. Elle contient `agentrun`, `agentrun-mcp`, `agentrun-log`, le README, la licence, la configuration initiale et les guides. Installer **les trois exécutables dans le même répertoire**. L'archive tar conserve leurs permissions exécutables.
 
-Les fichiers sont conservés 14 jours. Ils ciblent Linux/glibc, avec les bibliothèques d'Ubuntu 24.04 comme environnement de compilation ; pour une distribution plus ancienne ou musl, compiler localement. Linux 6.9+ reste nécessaire à l'exécution. Ce workflow ne publie pas de GitHub Release ni de paquet sur crates.io.
+Les artifacts de CI sont conservés 14 jours. Les binaires statiques sont indépendants de la glibc de la distribution ; Linux 6.9+ reste nécessaire à l'exécution. L'installateur `install.sh` est inclus. Voir le [guide d'installation](install.md) pour les limites de compatibilité et les commandes.
+
+Les versions publiées sont aussi disponibles dans l'onglet **Releases**, avec les mêmes archives validées et leurs checksums. La publication d'une release est une étape distincte ; le workflow CI ne publie pas automatiquement de release ni de paquet sur crates.io.
 
 ## Permissions et maintenance
 
@@ -36,11 +39,16 @@ Depuis le dépôt, avec Rust et Python 3.11+ :
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked --all-targets
-cargo build --locked --release --bins
-python3 scripts/resource_soak.py --bin-dir target/release --cycles 10
-python3 scripts/package_binaries.py --bin-dir target/release --target x86_64-unknown-linux-gnu
+rustup target add x86_64-unknown-linux-musl
+export RUSTFLAGS='-C linker=rust-lld -C target-feature=+crt-static'
+cargo clippy --locked --all-targets --target x86_64-unknown-linux-musl -- -D warnings
+cargo test --locked --all-targets --target x86_64-unknown-linux-musl
+cargo build --locked --release --bins --target x86_64-unknown-linux-musl
+python3 scripts/verify_static.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
+python3 scripts/resource_soak.py --bin-dir target/x86_64-unknown-linux-musl/release --cycles 10
+python3 scripts/package_binaries.py --bin-dir target/x86_64-unknown-linux-musl/release --target x86_64-unknown-linux-musl
+python3 scripts/test_install.py --archive dist/agentrun-0.3.1-x86_64-unknown-linux-musl.tar.gz
+python3 scripts/distribution_smoke.py --archive dist/agentrun-0.3.1-x86_64-unknown-linux-musl.tar.gz
 ```
 
-Pour ARM64, utiliser la cible `aarch64-unknown-linux-gnu` sur une machine ARM64. Le paramètre du script d'archive nomme la plateforme ; il ne réalise aucune compilation croisée. Le workflow sera effectivement exécuté après l'envoi des fichiers dans le dépôt GitHub.
+Pour ARM64, utiliser la cible `aarch64-unknown-linux-musl` sur une machine ARM64. Le script d'archive vérifie les binaires mais ne réalise aucune compilation croisée. Le dernier test nécessite Docker et télécharge les images officielles des distributions ; Docker n'est pas requis pour installer ou utiliser AgentRun.

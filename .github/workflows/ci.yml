@@ -27,12 +27,12 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
           - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-musl
     env:
       BUILD_TARGET: ${{ matrix.target }}
-      RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=/src/agentrun
+      RUSTFLAGS: -C linker=rust-lld -C target-feature=+crt-static --remap-path-prefix=${{ github.workspace }}=/src/agentrun
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,11 +68,20 @@ jobs:
       - name: Build release binaries
         run: cargo build --locked --release --bins --target "$BUILD_TARGET"
 
+      - name: Verify static ELF binaries
+        run: python3 scripts/verify_static.py --bin-dir "target/$BUILD_TARGET/release" --target "$BUILD_TARGET"
+
       - name: Exercise release MCP and check resource cleanup
         run: python3 scripts/resource_soak.py --bin-dir "target/$BUILD_TARGET/release" --cycles 10
 
       - name: Package binaries and checksums
         run: python3 scripts/package_binaries.py --bin-dir "target/$BUILD_TARGET/release" --target "$BUILD_TARGET"
+
+      - name: Verify offline installer
+        run: python3 scripts/test_install.py --archive dist/*.tar.gz
+
+      - name: Test common Linux distributions
+        run: python3 scripts/distribution_smoke.py --archive dist/*.tar.gz
 
       - name: Upload Linux binaries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

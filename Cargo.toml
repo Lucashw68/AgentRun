@@ -1,13 +1,13 @@
 [package]
 name = "agentrun"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 rust-version = "1.88"
 description = "Local development process manager for humans and agents, with a stdio-only MCP server"
 license = "MIT"
 readme = "README.md"
 default-run = "agentrun"
-include = ["src/**/*.rs", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "examples/config.json", "scripts/*.py", "docs/*.md", ".github/workflows/*.yml"]
+include = ["src/**/*.rs", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "examples/config.json", "scripts/*.py", "scripts/*.sh", "docs/*.md", ".github/workflows/*.yml"]
 
 [[bin]]
 name = "agentrun"
