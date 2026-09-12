@@ -14,23 +14,23 @@ use std::{
 };
 
 #[test]
-fn reads_legacy_node_registry_without_schema_migration() {
+fn reads_version_one_registry_with_string_start_time() {
     let env = Env::new();
     env.core.list().unwrap();
-    // Synthetic legacy data: never copy identifiers from a developer's machine.
-    let legacy = json!({"version":1,"processes":[{
-        "id":"legacy-node", "pid":2147483000, "pgid":2147483000,
+    // Synthetic registry data: never copy identifiers from a developer's machine.
+    let snapshot = json!({"version":1,"processes":[{
+        "id":"schema-v1", "pid":2147483000, "pgid":2147483000,
         "cwd":env.cwd, "command":["pnpm","dev"],
         "startedAt":"2024-01-01T00:00:00.000Z", "status":"running", "ports":[3000],
         "owner":{"type":"agent","client":"test-agent"}, "processStartTime":"12345",
         "bootId":"00000000-0000-4000-8000-000000000001", "uid":1000,
-        "logPath":env.paths.logs.join("legacy-node-00000000-0000-4000-8000-000000000000.log")
+        "logPath":env.paths.logs.join("schema-v1-00000000-0000-4000-8000-000000000000.log")
     }]});
-    fs::write(&env.paths.registry, serde_json::to_vec(&legacy).unwrap()).unwrap();
-    let p = env.core.get("legacy-node").unwrap();
+    fs::write(&env.paths.registry, serde_json::to_vec(&snapshot).unwrap()).unwrap();
+    let p = env.core.get("schema-v1").unwrap();
     assert_eq!(p.status, Status::Dead);
     assert_eq!(p.command, vec!["pnpm", "dev"]);
-    assert_eq!(env.core.clean().unwrap().removed, vec!["legacy-node"]);
+    assert_eq!(env.core.clean().unwrap().removed, vec!["schema-v1"]);
 }
 use support::*;
 

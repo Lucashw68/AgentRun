@@ -4,7 +4,7 @@
 
 AgentRun conserve l'état des processus de développement persistants : serveurs, workers, outils de dev. Après la fin d'une session d'agent ou de terminal, un humain ou un autre agent peut retrouver leurs commandes, répertoires, propriétaires, ports et logs, puis les arrêter avec vérification de leur identité Linux.
 
-**Implémentation entièrement Rust. Linux 6.9+ avec `/proc` et les appels `pidfd` autorisés.** Deux interfaces natives : `agentrun` et `agentrun-mcp`, accompagnées du collecteur interne `agentrun-log`. Aucune dépendance Node.js/npm ou utilitaire `flock` à l'exécution. Aucun daemon réseau, HTTP, WebSocket, dashboard, compte ou port réseau AgentRun.
+**Implémentation entièrement Rust. Linux 6.9+ avec `/proc` et les appels `pidfd` autorisés.** Deux interfaces natives : `agentrun` et `agentrun-mcp`, accompagnées du collecteur interne `agentrun-log`. Aucun daemon réseau, HTTP, WebSocket, dashboard, compte ou port réseau AgentRun.
 
 ## Installation
 
@@ -131,7 +131,7 @@ Le CLI et le MCP appellent la même façade `core::AgentRun`. Seul le Core lance
 
 Le SDK `rmcp` est compilé avec `default-features = false`, `server` et `transport-io`. Aucun transport HTTP n'est activé. Les blocs `unsafe` sont confinés aux appels Linux nécessaires, documentés et contrôlés avec Clippy ; Rust ne dispense pas de vérifier leur correction.
 
-## Registre, XDG et migration depuis Node
+## Registre et chemins XDG
 
 ```text
 $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
@@ -142,9 +142,7 @@ $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
 $XDG_CONFIG_HOME/agentrun/config.json  défaut : ~/.config/agentrun/config.json
 ```
 
-Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON gardent **la version 1**, compatible avec les entrées du MVP TypeScript. La configuration et les noms de commandes sont conservés. La version courante est `0.3.0`.
-
-La migration du dépôt retire les sources TypeScript, `package.json` et les dépendances npm. Si vous avez installé le précédent package globalement, vous pouvez le désinstaller avec `npm uninstall --global agentrun`, puis installer les binaires Rust. Vérifier `command -v agentrun` pour éviter qu'un ancien exécutable masque le nouveau. Ne jamais supprimer le registre pour changer de langage.
+Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.0`.
 
 Chaque entrée conserve :
 
@@ -336,7 +334,7 @@ cargo build --locked --release
 cargo package --locked --allow-dirty --offline
 ```
 
-Les tests n'ont besoin ni de Node.js, ni de Python. Ils compilent un petit worker Rust indépendant et utilisent de vrais processus, signaux et connexions stdio. Ils couvrent notamment la persistance avant `execve`, un parent tué par SIGKILL avant validation, l'identité altérée, les enfants résistants à SIGTERM, le leader qui disparaît, la concurrence interprocessus, les écritures atomiques, le verrou après crash, le JSON, les logs, les profils MCP et l'absence de sockets dans le serveur MCP. Ils couvrent aussi les redémarrages, la révocation des profils, les budgets de ressources, la rotation/rétention et l’échec du reaper.
+Les tests compilent un petit worker Rust indépendant et utilisent de vrais processus, signaux et connexions stdio. Ils couvrent notamment la persistance avant `execve`, un parent tué par SIGKILL avant validation, l'identité altérée, les enfants résistants à SIGTERM, le leader qui disparaît, la concurrence interprocessus, les écritures atomiques, le verrou après crash, le JSON, les logs, les profils MCP et l'absence de sockets dans le serveur MCP. Ils couvrent aussi les redémarrages, la révocation des profils, les budgets de ressources, la rotation/rétention et l’échec du reaper.
 
 Les tests nécessitent Linux 6.9+, un `/proc` accessible, `rustc`, la création de processus et un listener TCP de test sur `127.0.0.1`. Un sandbox peut interdire ces appels même sur un noyau compatible. Les tests utilisent un état temporaire séparé de votre registre.
 
