@@ -35,6 +35,8 @@ Cet utilitaire, inclus à partir de **0.3.3**, installe la configuration initial
 
 Ouvrir ensuite une nouvelle session Codex et demander : « Utilise l'outil MCP AgentRun `list_processes` pour vérifier la connexion. » Pour les autres agents, `agentrun-setup config` prépare seulement la politique ; voir le [guide de configuration](docs/agents.md#configuration-automatique-recommandée).
 
+Après une mise à jour, relancer `agentrun-setup codex` pour actualiser le bloc de consignes géré. À partir de 0.3.4, il demande de vérifier les profils et racines avant le lancement, de signaler tous les blocages connus et de distinguer les refus du client des erreurs AgentRun. Les profils, racines et instructions personnelles existants sont conservés.
+
 Les archives Linux statiques musl pour x86_64 et ARM64 sont aussi disponibles dans les [releases publiques](https://github.com/Lucashw68/AgentRun/releases/latest), pour Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Aucun compilateur n'est requis ; chaque archive contient aussi `install.sh` pour une installation hors ligne.
 
 Pour compiler depuis les sources avec une toolchain Rust compatible avec `Cargo.toml` :
@@ -173,7 +175,7 @@ $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
 $XDG_CONFIG_HOME/agentrun/config.json  défaut : ~/.config/agentrun/config.json
 ```
 
-Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.3`.
+Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.4`.
 
 Chaque entrée conserve :
 
@@ -186,6 +188,8 @@ processStartTime, bootId, uid, logPath, deadReason?, profile?
 `processStartTime` est une chaîne décimale contenant les ticks du champ 22 de `/proc/<pid>/stat`. Le registre ne contient pas de pidfd : un descripteur est local à un processus, il est rouvert et son identité vérifiée à chaque arrêt. `bootId` empêche une correspondance après reboot.
 
 Chaque opération de consultation ou mutation du registre prend un verrou exclusif natif, revalide les entrées contre Linux et persiste leur état. Les zombies sont morts. Une identité différente donne `dead`, même si le PID existe. Une structure JSON corrompue ou inconnue provoque un refus explicite ; elle n'est jamais remplacée silencieusement.
+
+`deadReason` conserve le motif enregistré d'une entrée déjà morte : un arrêt explicite reste `Stopped` après `list`, `status` ou une nouvelle session. Sans motif connu, la revalidation fournit un diagnostic générique. Si le processus enregistré est à nouveau observé vivant avec la même identité, l'état devient `running` et l'ancien motif est effacé. Le motif historique ne remplace jamais les vérifications d'identité avant signalisation.
 
 L'écriture utilise un fichier temporaire unique, `fsync`, `rename` atomique puis `fsync` du répertoire. Le verrou natif `flock(2)` est détenu par un fichier Rust et libéré automatiquement à la sortie ou au crash. Aucun processus auxiliaire de verrou. L'attente est bornée à 30 secondes. Ne pas supprimer le fichier de verrou pendant une utilisation ; le stockage doit être local, pas NFS.
 

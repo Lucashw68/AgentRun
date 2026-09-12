@@ -109,6 +109,56 @@ fn start_persistence_owner_logs_and_stop() {
 }
 
 #[test]
+fn stopped_reason_survives_revalidation_and_a_new_core() {
+    let env = Env::new();
+    let p = env.start("stopped", "basic");
+    assert_eq!(
+        env.core.stop(&p.id).unwrap().dead_reason.as_deref(),
+        Some("Stopped")
+    );
+    let reopened = AgentRun::new(env.paths.clone());
+    assert_eq!(
+        reopened.list().unwrap()[0].dead_reason.as_deref(),
+        Some("Stopped")
+    );
+    reopened.get_logs(&p.id, 10).unwrap();
+    assert!(reopened.ports().unwrap()[0].ports.is_empty());
+    assert_eq!(
+        reopened.stop(&p.id).unwrap().dead_reason.as_deref(),
+        Some("Stopped")
+    );
+    assert!(reopened.stop_all().unwrap().stopped.is_empty());
+    assert_eq!(
+        reopened.get(&p.id).unwrap().dead_reason.as_deref(),
+        Some("Stopped")
+    );
+    let registry = Registry::new(env.paths.clone());
+    assert_eq!(
+        registry.transaction().unwrap().data.processes[0]
+            .dead_reason
+            .as_deref(),
+        Some("Stopped")
+    );
+}
+
+#[test]
+fn revalidation_uses_live_identity_even_with_a_saved_dead_reason() {
+    let env = Env::new();
+    let p = env.start("observed", "basic");
+    let registry = Registry::new(env.paths.clone());
+    {
+        let mut tx = registry.transaction().unwrap();
+        tx.data.processes[0].status = Status::Dead;
+        tx.data.processes[0].dead_reason = Some("Stopped".into());
+        tx.save().unwrap();
+    }
+    let observed = env.core.get(&p.id).unwrap();
+    assert_eq!(observed.status, Status::Running);
+    assert!(observed.dead_reason.is_none());
+    assert!(alive(p.pid));
+}
+
+#[test]
 fn registry_is_durable_before_command_executes() {
     let env = Env::new();
     let mut req = env.request("committed", "verify-registry");
@@ -163,6 +213,25 @@ fn natural_death_clean_and_collision_free_logs() {
     let p = env.start("short", "exit");
     let live = env.start("live", "basic");
     until(|| env.core.get("short").unwrap().status == Status::Dead);
+    let reason = env.core.get("short").unwrap().dead_reason.unwrap();
+    assert_eq!(
+        reason,
+        "Process absent, inaccessible, or kernel identity changed"
+    );
+    // Older/dead entries without a recorded reason still receive a diagnosis.
+    {
+        let registry = Registry::new(env.paths.clone());
+        let mut tx = registry.transaction().unwrap();
+        let short = tx
+            .data
+            .processes
+            .iter_mut()
+            .find(|p| p.id == "short")
+            .unwrap();
+        short.dead_reason = None;
+        tx.save().unwrap();
+    }
+    assert_eq!(env.core.get("short").unwrap().dead_reason, Some(reason));
     assert_eq!(env.core.clean().unwrap().removed, vec!["short"]);
     assert!(alive(live.pid));
     assert_eq!(env.core.get("short").unwrap_err().code, "NOT_FOUND");
@@ -189,6 +258,13 @@ fn simultaneous_processes_and_stop_all() {
     assert_eq!(result.stopped.len(), 6);
     assert!(result.errors.is_empty());
     assert!(records.iter().all(|p| !alive(p.pid)));
+    assert!(
+        env.core
+            .list()
+            .unwrap()
+            .iter()
+            .all(|p| { p.status == Status::Dead && p.dead_reason.as_deref() == Some("Stopped") })
+    );
 }
 
 #[test]
@@ -440,6 +516,7 @@ fn restart_refuses_mismatched_identity_and_preserves_failed_recipe() {
     assert_eq!(dead.status, Status::Dead);
     assert_eq!(dead.log_path, old.log_path);
     assert_eq!(dead.command, vec![bad.to_str().unwrap()]);
+    assert_eq!(dead.dead_reason.as_deref(), Some("Stopped for restart"));
 }
 
 #[test]

@@ -46,10 +46,15 @@ impl AgentRun {
                 p.dead_reason = None;
                 p.ports = port_detection::detect(p);
             } else {
+                // Revalidation observes whether the recorded process is still
+                // alive; it cannot explain an already recorded death better
+                // than an explicit stop/restart outcome. Keep that history.
+                if p.status != Status::Dead || p.dead_reason.is_none() {
+                    p.dead_reason =
+                        Some("Process absent, inaccessible, or kernel identity changed".into());
+                }
                 p.status = Status::Dead;
                 p.ports.clear();
-                p.dead_reason =
-                    Some("Process absent, inaccessible, or kernel identity changed".into());
             }
         }
         tx.save()?;

@@ -180,6 +180,14 @@ fn real_stdio_protocol_narrow_tools_policy_and_no_network() {
     );
     assert!(!alive(p.pid));
     assert_eq!(
+        client.call("list_processes", json!({}))["structuredContent"]["processes"][0]["deadReason"],
+        "Stopped"
+    );
+    assert_eq!(
+        client.call("get_process", json!({"id":p.id}))["structuredContent"]["process"]["deadReason"],
+        "Stopped"
+    );
+    assert_eq!(
         client.call("clean_registry", json!({}))["structuredContent"]["removed"],
         json!([p.id])
     );

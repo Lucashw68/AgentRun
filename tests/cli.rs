@@ -46,6 +46,14 @@ fn json_contract_and_detached_process_across_cli_invocations() {
         "dead"
     );
     assert_eq!(
+        env.json(&["list", "--json"])["processes"][0]["deadReason"],
+        "Stopped"
+    );
+    assert_eq!(
+        env.json(&["status", "cli-worker", "--json"])["process"]["deadReason"],
+        "Stopped"
+    );
+    assert_eq!(
         env.json(&["clean", "--json"])["removed"],
         serde_json::json!(["cli-worker"])
     );
