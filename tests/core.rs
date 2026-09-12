@@ -589,15 +589,26 @@ fn logs_rotate_while_cli_is_gone_and_retention_is_bounded() {
 
 #[test]
 fn retention_does_not_delete_a_collectors_open_log() {
+    use agentrun::core::limits::RETAINED_LOG_RUNS;
     use std::os::fd::AsRawFd;
+    use std::time::{Duration, UNIX_EPOCH};
     let env = Env::new();
     env.core.list().unwrap();
     let (path, file) = agentrun::core::logs::create(&env.paths, "leased").unwrap();
+    // Creation order does not guarantee distinct mtimes on every filesystem.
+    // Make this file explicitly older so pruning must consider its lease.
+    file.set_times(fs::FileTimes::new().set_modified(UNIX_EPOCH + Duration::from_secs(1)))
+        .unwrap();
     // SAFETY: flock borrows this live test file descriptor.
     let locked = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
     assert_eq!(locked, 0);
-    for i in 0..25 {
-        agentrun::core::logs::create(&env.paths, &format!("new-{i}")).unwrap();
+    for i in 0..RETAINED_LOG_RUNS + 5 {
+        let (_, newer) = agentrun::core::logs::create(&env.paths, &format!("new-{i}")).unwrap();
+        newer
+            .set_times(
+                fs::FileTimes::new().set_modified(UNIX_EPOCH + Duration::from_secs(2 + i as u64)),
+            )
+            .unwrap();
     }
     env.core.list().unwrap();
     assert!(std::path::Path::new(&path).exists());
