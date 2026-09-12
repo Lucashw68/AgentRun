@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUST_TOOLCHAIN: 1.98.1
+
+jobs:
+  linux:
+    name: Linux / ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    env:
+      BUILD_TARGET: ${{ matrix.target }}
+      RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=/src/agentrun
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check Linux kernel
+        run: |
+          python3 - <<'PY'
+          import platform
+          import re
+          release = platform.release()
+          version = re.match(r"(\d+)\.(\d+)", release)
+          if platform.system() != "Linux" or not version or tuple(map(int, version.groups())) < (6, 9):
+              raise SystemExit(f"AgentRun tests require Linux >= 6.9 with pidfd group signalling; got {release}")
+          print(f"Kernel: {release}")
+          PY
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component rustfmt --component clippy
+          rustup default "$RUST_TOOLCHAIN"
+          rustup target add "$BUILD_TARGET"
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --target "$BUILD_TARGET" -- -D warnings
+
+      - name: Linux integration tests
+        run: cargo test --locked --all-targets --target "$BUILD_TARGET"
+
+      - name: Build release binaries
+        run: cargo build --locked --release --bins --target "$BUILD_TARGET"
+
+      - name: Exercise release MCP and check resource cleanup
+        run: python3 scripts/resource_soak.py --bin-dir "target/$BUILD_TARGET/release" --cycles 10
+
+      - name: Package binaries and checksums
+        run: python3 scripts/package_binaries.py --bin-dir "target/$BUILD_TARGET/release" --target "$BUILD_TARGET"
+
+      - name: Upload Linux binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: agentrun-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
