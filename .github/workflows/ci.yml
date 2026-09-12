@@ -80,6 +80,9 @@ jobs:
       - name: Verify offline installer
         run: python3 scripts/test_install.py --archive dist/*.tar.gz
 
+      - name: Verify download installer and failure handling
+        run: python3 scripts/test_download_install.py --archive dist/*.tar.gz
+
       - name: Test common Linux distributions
         run: python3 scripts/distribution_smoke.py --archive dist/*.tar.gz
 

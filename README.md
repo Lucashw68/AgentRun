@@ -8,7 +8,9 @@ AgentRun conserve l'état des processus de développement persistants : serveurs
 
 ## Installation
 
-**Binaires prêts à l'emploi :** l'onglet **Releases** du dépôt GitHub propose des archives Linux statiques musl pour x86_64 et ARM64, utilisables sur Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Télécharger l'archive et son checksum, puis suivre le [guide d'installation Linux](docs/install.md). Aucun compilateur n'est requis ; l'archive contient `install.sh` pour une installation utilisateur sans sudo.
+**Installation automatique :** télécharger `install-agentrun.sh` depuis l'onglet **Releases**, puis exécuter `sh install-agentrun.sh --repo OWNER/REPOSITORY` (ajouter `--github-cli` pour un dépôt privé). Le script détecte l'architecture, télécharge les binaires statiques, vérifie SHA-256 et installe les trois exécutables sans sudo. Le [guide d'installation Linux](docs/install.md#téléchargement-et-installation-automatiques) donne les commandes complètes pour les dépôts publics et privés.
+
+Les archives Linux statiques musl pour x86_64 et ARM64 restent téléchargeables manuellement, pour Ubuntu, Fedora, Arch, Debian, Alpine et leurs dérivées avec un noyau compatible. Aucun compilateur n'est requis ; chaque archive contient aussi `install.sh` pour une installation hors ligne.
 
 Pour compiler depuis les sources avec une toolchain Rust compatible avec `Cargo.toml` :
 
@@ -144,7 +146,7 @@ $XDG_STATE_HOME/agentrun/              défaut : ~/.local/state/agentrun/
 $XDG_CONFIG_HOME/agentrun/config.json  défaut : ~/.config/agentrun/config.json
 ```
 
-Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.1`.
+Les variables XDG absentes, vides ou relatives utilisent le fallback dans le répertoire personnel. Les chemins doivent être valides en UTF-8. Le registre et le contrat JSON utilisent **la version 1**. La version courante est `0.3.2`.
 
 Chaque entrée conserve :
 

@@ -2,14 +2,55 @@
 
 Les releases à partir de **0.3.1** fournissent des binaires statiques musl pour **x86_64** et **ARM64**. La même archive fonctionne sur les distributions utilisant glibc ou musl : aucun compilateur Rust, runtime supplémentaire ou paquet de compatibilité glibc n'est nécessaire pour AgentRun. Les programmes lancés par ses profils ont leurs propres dépendances.
 
+## Téléchargement et installation automatiques
+
+La release fournit aussi **`install-agentrun.sh`**, qui détecte l'architecture, choisit la dernière release stable, télécharge l'archive et son checksum, vérifie SHA-256 puis lance l'installation utilisateur. Remplacer `OWNER/REPOSITORY` par le dépôt GitHub AgentRun souhaité. Aucune identité de compte n'est intégrée au script.
+
+Pour un **dépôt privé**, avec GitHub CLI installé et authentifié (`gh auth login` si nécessaire) :
+
+```bash
+agentrun_repo=OWNER/REPOSITORY
+gh release download --repo "$agentrun_repo" --pattern install-agentrun.sh --output install-agentrun.sh &&
+sh install-agentrun.sh --repo "$agentrun_repo" --github-cli
+export PATH="$HOME/.local/bin:$PATH"
+agentrun --version
+```
+
+Le compte connecté doit avoir accès au dépôt. `--github-cli` utilise l'authentification de `gh` sans afficher de token ni le passer dans les arguments. Ce mode convient aussi à un dépôt public.
+
+Pour un **dépôt public**, avec `curl` :
+
+```bash
+agentrun_repo=OWNER/REPOSITORY
+curl -q --fail --show-error --silent --location --proto '=https' --proto-redir '=https' \
+  "https://github.com/$agentrun_repo/releases/latest/download/install-agentrun.sh" \
+  --output install-agentrun.sh &&
+sh install-agentrun.sh --repo "$agentrun_repo"
+export PATH="$HOME/.local/bin:$PATH"
+agentrun --version
+```
+
+Le script téléchargé peut être lu avant exécution. Il exige `tar`, `sha256sum` et les outils POSIX usuels, plus `curl` ou `gh` selon le mode. Il ne télécharge aucun de ces prérequis. Un dépôt privé renvoie généralement 404 aux téléchargements anonymes : utiliser le mode GitHub CLI, sans changer la visibilité du dépôt.
+
+Pour choisir une version et un emplacement :
+
+```bash
+sh install-agentrun.sh --repo "$agentrun_repo" --github-cli \
+  --version 0.3.2 --prefix "$HOME/Applications/agentrun"
+```
+
+`--version` accepte `0.3.2` ou `v0.3.2`. Sans cette option, la dernière version est résolue une fois avant les téléchargements. Aucun suivi automatique des mises à jour n'est ajouté au CLI/MCP. Pour réutiliser un script déjà téléchargé, relancer `sh install-agentrun.sh ...` ; GitHub CLI refuse d'écraser un fichier local existant sans son option `--clobber`.
+
+Les téléchargements publics et leurs redirections sont limités à HTTPS avec validation TLS ; le script ignore `.curlrc`. Les fichiers sont placés dans un répertoire temporaire privé et supprimés à la sortie. Le checksum est contrôlé avant toute extraction ou exécution ; seuls les trois binaires et l'installateur régulier de l'archive sont extraits vers des destinations fixes. Un échec de téléchargement, un checksum incorrect ou une archive incomplète ne remplace pas l'installation existante. SHA-256 protège l'intégrité du transfert, sans remplacer la confiance dans le dépôt choisi et dans le script initial.
+
 ## Choisir le téléchargement
 
 Ouvrir l'onglet **Releases** du dépôt GitHub et choisir la dernière version. Télécharger l'archive et son fichier `.sha256` :
 
 | Résultat de `uname -m` | Archive |
 | --- | --- |
-| `x86_64` | `agentrun-0.3.1-x86_64-unknown-linux-musl.tar.gz` |
-| `aarch64` ou `arm64` | `agentrun-0.3.1-aarch64-unknown-linux-musl.tar.gz` |
+| `x86_64` | `agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz` |
+| `aarch64` ou `arm64` | `agentrun-0.3.2-aarch64-unknown-linux-musl.tar.gz` |
 
 Les fichiers `Source code` générés par GitHub ne contiennent pas les exécutables. Choisir les assets nommés ci-dessus. Les architectures 32 bits ne sont pas distribuées.
 
@@ -33,9 +74,9 @@ Le [cycle des noyaux Ubuntu](https://ubuntu.com/kernel/docs/reference/hwe-kernel
 Depuis le dossier de téléchargement, exemple x86_64 :
 
 ```bash
-sha256sum -c agentrun-0.3.1-x86_64-unknown-linux-musl.tar.gz.sha256
-tar -xzf agentrun-0.3.1-x86_64-unknown-linux-musl.tar.gz
-cd agentrun-0.3.1-x86_64-unknown-linux-musl
+sha256sum -c agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz.sha256
+tar -xzf agentrun-0.3.2-x86_64-unknown-linux-musl.tar.gz
+cd agentrun-0.3.2-x86_64-unknown-linux-musl
 sh ./install.sh
 export PATH="$HOME/.local/bin:$PATH"
 agentrun --version

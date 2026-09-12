@@ -42,3 +42,8 @@ with tarfile.open(archive, 'w:gz', format=tarfile.USTAR_FORMAT) as package:
 checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
 archive.with_suffix(archive.suffix + '.sha256').write_text(f'{checksum}  {archive.name}\n')
 print(archive)
+bootstrap = args.out_dir / 'install-agentrun.sh'
+bootstrap.write_bytes((root / 'scripts/download-install.sh').read_bytes())
+bootstrap.chmod(0o755)
+bootstrap.with_suffix('.sh.sha256').write_text(
+    f'{hashlib.sha256(bootstrap.read_bytes()).hexdigest()}  {bootstrap.name}\n')

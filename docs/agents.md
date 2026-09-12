@@ -6,7 +6,7 @@ Deux configurations sont nécessaires : la **politique AgentRun**, qui autorise 
 
 ## 1. Installer les trois binaires
 
-Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Les [archives Linux portables](install.md) permettent d'installer les trois binaires avec `sh ./install.sh`, sans Cargo, sur Ubuntu, Fedora, Arch et d'autres distributions. Continuer ensuite à l'étape 2 de ce guide depuis le dossier extrait.
+Prérequis : Linux 6.9+, `/proc` accessible et appels `pidfd` autorisés. Le [guide d'installation](install.md#téléchargement-et-installation-automatiques) propose un script qui télécharge, vérifie et installe les trois binaires, avec prise en charge des dépôts publics et privés. Les archives permettent aussi une installation hors ligne avec `sh ./install.sh`, sans Cargo. Après une installation automatique, télécharger ou copier `examples/config.json` depuis le dépôt pour l'étape 2 ; après extraction manuelle, ce fichier est déjà dans le dossier extrait.
 
 Pour une installation depuis les sources, depuis le dépôt AgentRun avec Cargo :
 
