@@ -343,7 +343,7 @@ codex mcp list
 
 Adapter le chemin si les binaires sont dans `~/.cargo/bin` ou ailleurs. Codex démarre le serveur en stdio. Ouvrir une nouvelle session, puis demander un appel MCP `list_processes` sans démarrer de processus. Voir la [documentation officielle Codex](https://developers.openai.com/codex/mcp/).
 
-**Quand les outils MCP AgentRun sont disponibles, l'agent doit les préférer au CLI.** Ajouter les [consignes MCP du guide](docs/agents.md#4-donner-une-consigne-permanente-à-lagent) aux instructions existantes du client. Les refus de politique ne doivent pas être contournés via le CLI ou une modification silencieuse de la configuration.
+**Pour gérer un processus de développement persistant, préférer les outils MCP AgentRun au CLI quand ils sont disponibles.** Ajouter les [consignes MCP du guide](docs/agents.md#4-donner-une-consigne-permanente-à-lagent) aux instructions existantes du client. Les refus de politique ne doivent pas être contournés via le CLI ou une modification silencieuse de la configuration.
 
 Pour un agent configuré explicitement pour utiliser le CLI, le bloc suivant peut être ajouté à ses instructions globales. Il ne remplace pas les consignes MCP lorsqu'une intégration MCP est utilisée :
 
@@ -352,7 +352,11 @@ Pour un agent configuré explicitement pour utiliser le CLI, le bloc suivant peu
 
 This machine uses AgentRun to manage persistent development processes.
 
-Before starting a development server, run:
+Use AgentRun only when starting, reusing, restarting, stopping or diagnosing
+a persistent development process. Do not call it for ordinary edits, builds,
+one-shot tests, documentation or unrelated end-of-task checks.
+
+Before starting or reusing a development server, run:
 
 agentrun list --json
 
@@ -371,9 +375,11 @@ When a server is no longer needed:
 
 agentrun stop <name>
 
-Before completing a task, inspect:
+After starting or restarting a server, check its status and logs before
+announcing readiness:
 
-agentrun list --json
+agentrun status <name>
+agentrun logs <name> --tail 50
 ```
 
 ## Développement et validation
